@@ -1,111 +1,330 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+/* นำเข้าฟอนต์ Prompt จาก Google (ห้ามมีแท็ก <style> ครอบในไฟล์ .css) */
+@import url('https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/* CRITICAL URGENT FIX: Reset and Force Styles */
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+/* 1. รีเซ็ตค่าพื้นฐานให้สะอาดที่สุด */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+/* 2. บังคับพื้นหลังและสีตัวอักษรของทั้งหน้า */
+html, body {
+  height: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: #f3f4f6 !important; 
+  color: #374151 !important; 
+  font-family: "Prompt", sans-serif !important; /* เปลี่ยนฟอนต์ตรงนี้เรียบร้อยครับ */
+  display: block !important; 
 }
 
+/* 3. บังคับ Root container ของ React ให้เต็มหน้าจอและใช้ Flex */
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  display: flex !important;
+  flex-direction: row !important; 
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  overflow: hidden; 
+}
+
+/* Layout หลัก */
+.app-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background-color: transparent !important;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0; 
+  background-color: #ffffff !important; 
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
+  border-right: 1px solid #e5e7eb;
 }
 
-body {
+.sidebar-logo {
+  padding: 24px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.sidebar-logo h1 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #8b0000;
   margin: 0;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
+.sidebar-nav {
+  padding: 16px 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.nav-item.active {
+  background-color: #fce8e8;
+  color: #8b0000;
+  font-weight: 600;
+}
+
+.nav-item.inactive {
+  color: #6b7280;
   font-weight: 500;
-  color: var(--text-h);
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+.sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid #e5e7eb;
+  background-color: #fafafa;
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
 }
-p {
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #2d3748;
+  overflow: hidden;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+}
+
+.user-info .name {
+  font-size: 14px;
+  font-weight: bold;
+  color: #111827;
+}
+
+.user-info .email {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #dc2626;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; 
+  background-color: #f3f4f6; 
+}
+
+.header {
+  height: 70px;
+  flex-shrink: 0; 
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.header h2 {
   margin: 0;
+  color: #8b0000;
+  font-size: 22px;
+  font-weight: bold;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+.content-area {
+  padding: 32px;
+  overflow-y: auto; 
+  flex: 1;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* Cards */
+.card {
+  background-color: #ffffff !important; 
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 24px;
+}
+
+.card-title {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #111827;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Forms */
+.form-group {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.form-input {
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  flex: 1;
+  min-width: 200px;
+  background-color: #ffffff !important; 
+  color: #374151 !important; 
+}
+
+.form-input.desc {
+  flex: 2;
+}
+
+.form-input.qty {
+  width: 100px;
+  flex: none;
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: #8b0000 !important; 
+  color: white !important; 
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #6b0000;
+}
+
+.btn-delete {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.btn-delete:hover {
+  background-color: #fca5a5;
+}
+
+/* Table */
+.table-card {
+  background-color: #ffffff !important; 
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+thead tr {
+  background-color: #f9fafb !important; 
+  border-bottom: 1px solid #e5e7eb;
+}
+
+th {
+  padding: 16px 24px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+th.text-center, td.text-center {
+  text-align: center;
+}
+
+tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s;
+  background-color: #ffffff !important; 
+}
+
+tbody tr:hover {
+  background-color: #f9fafb !important; 
+}
+
+td {
+  padding: 16px 24px;
+  font-size: 14px;
+  color: #374151;
+}
+
+td.font-medium {
+  font-weight: 500;
+  color: #111827;
+}
+
+td.text-muted {
+  color: #6b7280;
+}
+
+.badge-qty {
+  background-color: #f3f4f6;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px;
+  color: #6b7280;
 }
