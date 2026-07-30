@@ -47,6 +47,7 @@ router.post('/items', async (req, res) => {
 
     res.status(201).json(newAsset[0]);
   } catch (error) {
+    console.error("🔥 DB Error:", error); // 👈 เพิ่มบรรทัดนี้เข้าไป
     res.status(500).json({ error: 'Failed to add asset' });
   }
 });
