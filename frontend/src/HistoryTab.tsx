@@ -12,7 +12,7 @@ interface Borrowing {
   status: string;
 }
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const formatDateTimeDisplay = (isoString: string) => {
   const d = new Date(isoString);
