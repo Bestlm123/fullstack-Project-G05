@@ -2,21 +2,16 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# เปิดใช้งาน pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# ก๊อปปี้แค่ package.json มาก่อน
+COPY package.json ./
 
-# ก๊อปปี้ไฟล์จัดการแพ็กเกจมาก่อนเพื่อติดตั้ง
-COPY package.json pnpm-lock.yaml ./
-
-# ✅ เพิ่มบรรทัดนี้เข้าไป: สั่งสร้างไฟล์ .npmrc เพื่ออนุญาต esbuild
-RUN echo "only-built-dependencies=esbuild" > .npmrc
-
-RUN pnpm install --frozen-lockfile
+# ใช้ npm ธรรมดาติดตั้งแทน pnpm (ตัดปัญหาจุกจิกทั้งหมด)
+RUN npm install
 
 # ก๊อปปี้โค้ดทั้งหมดตามมา
 COPY . .
 
 EXPOSE 3000
 
-# คำสั่งรันเซิร์ฟเวอร์
-CMD ["pnpm", "run", "dev"]
+# เปลี่ยนคำสั่งรันเป็น npm
+CMD ["npm", "run", "dev"]
