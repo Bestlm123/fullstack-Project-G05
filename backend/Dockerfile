@@ -7,6 +7,10 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # ก๊อปปี้ไฟล์จัดการแพ็กเกจมาก่อนเพื่อติดตั้ง
 COPY package.json pnpm-lock.yaml ./
+
+# ✅ เพิ่มบรรทัดนี้เข้าไป: สั่งสร้างไฟล์ .npmrc เพื่ออนุญาต esbuild
+RUN echo "only-built-dependencies=esbuild" > .npmrc
+
 RUN pnpm install --frozen-lockfile
 
 # ก๊อปปี้โค้ดทั้งหมดตามมา
