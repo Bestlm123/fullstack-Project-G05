@@ -1,144 +1,199 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import request from 'supertest';
-import app from './app.js'; // หรือ './index.js' ขึ้นอยู่กับโครงสร้างของคุณเบส
+import app from './app.js'; // หรือ './index.js' ตามโครงสร้างโฟลเดอร์ของคุณเบส
 
-describe('Comprehensive Assets API Integration Tests', () => {
-  let createdAssetId: number;
+describe('Full System Integration Tests (Assets & Quantity-based Borrowing System)', () => {
+  const testAssetId = 'MIC010'; // ID พัสดุทดสอบ (ความยาว <= 10 ตัวอักษร)
+  const testStudentId = '650510001';
+  let createdBorrowingId: number;
 
   // =========================================================================
-  // 1. POST /api/items (CREATE)
+  // 1. ASSET MANAGEMENT TESTS (การจัดการพัสดุ & Validation)
   // =========================================================================
-  describe('POST /api/items (Create Asset)', () => {
-    it('1.1 [Happy Path] ควรสร้างพัสดุใหม่สำเร็จเมื่อใส่ข้อมูลครบถ้วน', async () => {
+  describe('1. Asset Management API (/api/items)', () => {
+    
+    it('1.1 [Happy Path] ควรสร้างพัสดุใหม่พร้อมจำนวน 10 อันสำเร็จ', async () => {
       const res = await request(app)
         .post('/api/items')
         .send({
+          id: testAssetId,
           name: 'ไมโครโฟนไร้สาย Shure',
           category: 'อุปกรณ์เสียง',
+          quantity: 10,
           status: 'available',
         });
 
       expect(res.status).toBe(201);
-      expect(res.body).toHaveProperty('id');
-      expect(typeof res.body.id).toBe('number');
+      expect(res.body.id).toBe(testAssetId);
       expect(res.body.name).toBe('ไมโครโฟนไร้สาย Shure');
-      expect(res.body.category).toBe('อุปกรณ์เสียง');
-      expect(res.body.status).toBe('available');
-
-      // เก็บ ID ไว้ใช้ทดสอบในบทต่อๆ ไป
-      createdAssetId = res.body.id;
-    });
-
-    it('1.2 [Happy Path] ควรใช้ Default Status ("available") เมื่อไม่ระบุ status', async () => {
-      const res = await request(app)
-        .post('/api/items')
-        .send({
-          name: 'โต๊ะพับอเนกประสงค์',
-          category: 'เฟอร์นิเจอร์',
-        });
-
-      expect(res.status).toBe(201);
+      expect(res.body.quantity).toBe(10);
+      expect(res.body.availableQuantity).toBe(10); // ตอนเริ่มต้น พร้อมใช้งานต้องเท่ากับจำนวนทั้งหมด (10)
       expect(res.body.status).toBe('available');
     });
 
-    it('1.3 [Edge Case] ควรตอบกลับ 400 เมื่อไม่ได้ส่ง field "name"', async () => {
+    it('1.2 [Validation Error] ควรตอบกลับ 400 เมื่อไม่ได้ส่ง field "name" หรือ "category"', async () => {
       const res = await request(app)
         .post('/api/items')
         .send({
-          category: 'อุปกรณ์เสียง',
+          id: 'TEST001',
+          name: 'ขาตั้งไมค์', // ขาด category
         });
 
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('error');
     });
 
-    it('1.4 [Edge Case] ควรตอบกลับ 400 เมื่อไม่ได้ส่ง field "category"', async () => {
+    it('1.3 [Validation Error] ควรตอบกลับ 400 เมื่อ ID พัสดุยาวเกิน 10 ตัวอักษร', async () => {
       const res = await request(app)
         .post('/api/items')
         .send({
-          name: 'ลำโพงบลูทูธ',
+          id: 'TOOLONGID12345',
+          name: 'สว่านไฟฟ้า',
+          category: 'เครื่องมือช่าง',
         });
 
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('error');
     });
-  });
 
-  // =========================================================================
-  // 2. GET /api/items (READ)
-  // =========================================================================
-  describe('GET /api/items (Read Assets)', () => {
-    it('2.1 [Happy Path] ควรคืนค่าข้อมูลพัสดุเป็น Array และมีรายการที่สร้างไว้', async () => {
+    it('1.4 [GET] ควรดึงรายการพัสดุทั้งหมดสำเร็จ และเจอพัสดุที่สร้างไว้', async () => {
       const res = await request(app).get('/api/items');
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body.length).toBeGreaterThan(0);
 
-      // เช็คว่าในรายการที่ดึงมา มี ID ที่เราเพิ่งสร้างไปอยู่ด้วยหรือไม่
-      const foundItem = res.body.find((item: any) => item.id === createdAssetId);
-      expect(foundItem).toBeDefined();
-      expect(foundItem.name).toBe('ไมโครโฟนไร้สาย Shure');
+      const foundAsset = res.body.find((item: any) => item.id === testAssetId);
+      expect(foundAsset).toBeDefined();
+      expect(foundAsset.quantity).toBe(10);
     });
-  });
 
-  // =========================================================================
-  // 3. PUT /api/items/:id (UPDATE)
-  // =========================================================================
-  describe('PUT /api/items/:id (Update Asset)', () => {
-    it('3.1 [Happy Path] ควรแก้ไขข้อมูลพัสดุ (เช่น เปลี่ยนสถานะเป็น borrowed) สำเร็จ', async () => {
+    it('1.5 [PUT] ควรแก้ไขข้อมูลพัสดุตาม ID สำเร็จ', async () => {
       const res = await request(app)
-        .put(`/api/items/${createdAssetId}`)
+        .put(`/api/items/${testAssetId}`)
         .send({
-          name: 'ไมโครโฟนไร้สาย Shure (อัปเดต)',
+          name: 'ไมโครโฟนไร้สาย Shure (ชุดประธาน)',
           category: 'อุปกรณ์เสียง',
-          status: 'borrowed',
-        });
-
-      expect(res.status).toBe(200);
-      expect(res.body.id).toBe(createdAssetId);
-      expect(res.body.name).toBe('ไมโครโฟนไร้สาย Shure (อัปเดต)');
-      expect(res.body.status).toBe('borrowed');
-    });
-
-    it('3.2 [Edge Case] ควรตอบกลับ 404 เมื่อพยายามแก้ไขพัสดุที่ไม่มีอยู่จริง (ID ไม่เจอ)', async () => {
-      const nonExistentId = 999999;
-      const res = await request(app)
-        .put(`/api/items/${nonExistentId}`)
-        .send({
-          name: 'เก้าอี้',
-          category: 'เฟอร์นิเจอร์',
+          quantity: 10,
+          availableQuantity: 10,
           status: 'available',
         });
 
+      expect(res.status).toBe(200);
+      expect(res.body.name).toBe('ไมโครโฟนไร้สาย Shure (ชุดประธาน)');
+    });
+
+    it('1.6 [PUT Error] ควรตอบกลับ 404 เมื่อพยายามแก้ไขพัสดุที่ไม่มีอยู่จริง', async () => {
+      const res = await request(app)
+        .put('/api/items/NOTFOUND')
+        .send({
+          name: 'ของไม่มีจริง',
+          category: 'ทดสอบ',
+        });
+
       expect(res.status).toBe(404);
       expect(res.body).toHaveProperty('error');
     });
   });
 
   // =========================================================================
-  // 4. DELETE /api/items/:id (DELETE)
+  // 2. BORROW & RETURN SYSTEM TESTS (ระบบตัด/คืนสต็อกพัสดุ)
   // =========================================================================
-  describe('DELETE /api/items/:id (Delete Asset)', () => {
-    it('4.1 [Edge Case] ควรตอบกลับ 404 เมื่อพยายามลบพัสดุที่ไม่มีอยู่จริง', async () => {
-      const nonExistentId = 999999;
-      const res = await request(app).delete(`/api/items/${nonExistentId}`);
+  describe('2. Borrowing & Return System API (/api/borrow & /api/return)', () => {
 
-      expect(res.status).toBe(404);
+    it('2.1 [Happy Path] ยืมของ 5 อันจาก 10 อัน -> ตัดสต็อกเหลือพร้อมใช้งาน 5 อัน', async () => {
+      const res = await request(app)
+        .post('/api/borrow')
+        .send({
+          studentId: testStudentId,
+          fullName: 'นายเบส สายโค้ด',
+          assetId: testAssetId,
+          quantity: 5, // ขอยืม 5 อัน
+          borrowDate: '2026-07-30',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('borrowing');
+      expect(res.body.borrowing.studentId).toBe(testStudentId);
+      expect(res.body.borrowing.quantity).toBe(5);
+      expect(res.body.borrowing.status).toBe('borrowed');
+
+      // เก็บ ID รายการยืมไว้นำไปทดสอบส่งคืน
+      createdBorrowingId = res.body.borrowing.id;
+
+      // ตรวจสอบสต็อกพัสดุใน Database ว่าตัดถูกต้องหรือไม่
+      const assetRes = await request(app).get('/api/items');
+      const targetAsset = assetRes.body.find((item: any) => item.id === testAssetId);
+      
+      expect(targetAsset.quantity).toBe(10);         // จำนวนทั้งหมด = 10
+      expect(targetAsset.availableQuantity).toBe(5); // พร้อมใช้งานคงเหลือ = 5 (10 - 5)
+      expect(targetAsset.status).toBe('available');  // ยังมีเหลือให้ยืม จึงเป็น available
+    });
+
+    it('2.2 [Borrow Error] ควรตอบกลับ 400 เมื่อระบุจำนวนยืมมากกว่าจำนวนที่พร้อมใช้งาน', async () => {
+      const res = await request(app)
+        .post('/api/borrow')
+        .send({
+          studentId: testStudentId,
+          fullName: 'นายเบส สายโค้ด',
+          assetId: testAssetId,
+          quantity: 999, // ขอยืมเกินจำนวนคงเหลือที่มี (มีแค่ 5)
+        });
+
+      expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('error');
     });
 
-    it('4.2 [Happy Path] ควรลบพัสดุสำเร็จเมื่อระบุ ID ที่มีอยู่จริง', async () => {
-      const res = await request(app).delete(`/api/items/${createdAssetId}`);
+    it('2.3 [Happy Path] คืนของ 5 อันที่ยืมไป -> สต็อกกลับมาพร้อมใช้งาน 10 อันเต็ม', async () => {
+      const res = await request(app)
+        .post('/api/return')
+        .send({
+          borrowingId: createdBorrowingId,
+        });
 
-      expect(res.status).toBe(204);
+      expect(res.status).toBe(200);
+      expect(res.body.borrowing.status).toBe('returned');
+
+      // ตรวจสอบสต็อกพัสดุใน Database ว่าบวกกลับมาครบไหม
+      const assetRes = await request(app).get('/api/items');
+      const targetAsset = assetRes.body.find((item: any) => item.id === testAssetId);
+
+      expect(targetAsset.quantity).toBe(10);
+      expect(targetAsset.availableQuantity).toBe(10); // บวกคืนเป็น 10 ตามเดิม
     });
 
-    it('4.3 [Verification] หลังสั่งลบแล้ว พยายามดึงข้อมูลพัสดุ ID นั้น ต้องไม่เจออีกต่อไป', async () => {
-      const res = await request(app).get('/api/items');
-      const foundItem = res.body.find((item: any) => item.id === createdAssetId);
-      
-      expect(foundItem).toBeUndefined();
+    it('2.4 [Return Error] ควรตอบกลับ 400 เมื่อพยายามคืนซ้ำรายการเดิมที่คืนไปแล้ว', async () => {
+      const res = await request(app)
+        .post('/api/return')
+        .send({
+          borrowingId: createdBorrowingId, // คืนซ้ำรอบสอง
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error');
+    });
+
+    it('2.5 [GET] ควรดึงประวัติรายการยืม-คืนทั้งหมดสำเร็จ', async () => {
+      const res = await request(app).get('/api/borrowings');
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBeGreaterThan(0);
+    });
+  });
+
+  // =========================================================================
+  // 3. CLEANUP & DELETE TEST (ทำความสะอาดข้อมูลหลัง Test)
+  // =========================================================================
+  describe('3. Cleanup Test Data', () => {
+    it('3.1 [DELETE Error] ควรตอบกลับ 404 เมื่อลบพัสดุที่ไม่มีอยู่จริง', async () => {
+      const res = await request(app).delete('/api/items/NOTFOUND');
+      expect(res.status).toBe(404);
+    });
+
+    it('3.2 [DELETE] ควรลบพัสดุทดสอบสำเร็จ', async () => {
+      const res = await request(app).delete(`/api/items/${testAssetId}`);
+      expect(res.status).toBe(204);
     });
   });
 });

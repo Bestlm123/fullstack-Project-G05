@@ -1,53 +1,37 @@
-import { pgTable, serial, varchar, timestamp, integer } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, integer, timestamp } from 'drizzle-orm/pg-core';
 
-// ==========================================
-// 1. ตาราง users (ข้อมูลผู้ใช้งาน)
-// ==========================================
+// 1. ตาราง users
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  studentId: varchar('student_id', { length: 20 }).notNull().unique(), // รหัสนักศึกษา
-  fullName: varchar('full_name', { length: 255 }).notNull(),          // ชื่อ-นามสกุล
+  studentId: varchar('student_id', { length: 20 }).notNull().unique(),
+  fullName: varchar('full_name', { length: 255 }).notNull(),
 });
 
-// ==========================================
-// 2. ตาราง assets (คลังพัสดุ)
-// ==========================================
+// 2. ตาราง assets (เพิ่ม available_quantity)
 export const assets = pgTable('assets', {
-  id: serial('id').primaryKey(),                                      // รหัสอุปกรณ์ (Primary Key)
-  name: varchar('name', { length: 255 }).notNull(),                   // ชื่ออุปกรณ์
-  category: varchar('category', { length: 100 }).notNull(),            // หมวดหมู่
-  status: varchar('status', { length: 50 }).default('available').notNull(), // สถานะ (เช่น available, borrowed)
+  id: varchar('id', { length: 10 }).primaryKey().notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  category: varchar('category', { length: 100 }).notNull(),
+  quantity: integer('quantity').default(1).notNull(),                 // จำนวนพัสดุทั้งหมดที่มี
+  availableQuantity: integer('available_quantity').default(1).notNull(), // จำนวนที่พร้อมใช้งานคงเหลือ
+  status: varchar('status', { length: 50 }).default('available').notNull(),
 });
 
-// ==========================================
-// 3. ตาราง borrowings (ประวัติการยืม-คืน)
-// ==========================================
+// 3. ตาราง borrowings (เพิ่ม quantity ยืมกี่ชิ้น)
 export const borrowings = pgTable('borrowings', {
   id: serial('id').primaryKey(),
-  
-  // เชื่อม Foreign Key เพื่อระบุว่าใครยืม และ ยืมอุปกรณ์ชิ้นไหน
-  userId: integer('user_id')
+  studentId: varchar('student_id', { length: 20 })
     .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),            // รหัสผู้ยืม (ดึงชื่อ-นามสกุล ได้ผ่าน Relation)
-    
-  assetId: integer('asset_id')
+    .references(() => users.studentId, { onDelete: 'cascade' }),
+  assetId: varchar('asset_id', { length: 10 })
     .notNull()
-    .references(() => assets.id, { onDelete: 'cascade' }),           // รหัสอุปกรณ์ (ดึงชื่ออุปกรณ์ ได้ผ่าน Relation)
-
-  borrowDate: timestamp('borrow_date').defaultNow().notNull(),       // วันที่ยืม (ตั้งเวลาปัจจุบันให้อัตโนมัติ)
-  returnDate: timestamp('return_date'),                               // วันที่คืน (ใส่ค่าเมื่อนำของมาคืน)
-  
-  status: varchar('status', { length: 50 }).default('pending').notNull(), // สถานะการยืม (เช่น pending, active, returned)
+    .references(() => assets.id, { onDelete: 'cascade' }),
+  quantity: integer('quantity').default(1).notNull(), // 👈 จำนวนชิ้นที่ยืมในครั้งนี้
+  borrowDate: timestamp('borrow_date').defaultNow().notNull(),
+  returnDate: timestamp('return_date'),
+  status: varchar('status', { length: 50 }).default('borrowed').notNull(),
 });
 
-// ==========================================
-// Type Exports สำหรับนำไปใช้ใน Express Controller
-// ==========================================
 export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-
 export type Asset = typeof assets.$inferSelect;
-export type NewAsset = typeof assets.$inferInsert;
-
 export type Borrowing = typeof borrowings.$inferSelect;
-export type NewBorrowing = typeof borrowings.$inferInsert;
