@@ -12,7 +12,7 @@ interface Borrowing {
   status: string;
 }
 
-const API_URL = 'http://fsg07.cpecmu.com/api';
+const API_URL = 'https://fsg07.cpecmu.com/api';
 
 const formatDateTimeDisplay = (isoString: string) => {
   const d = new Date(isoString);
