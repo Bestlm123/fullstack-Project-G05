@@ -1,5 +1,7 @@
 version: '3.8'
+
 services:
+  # 1. Database Service (ของเดิม)
   postgres:
     image: postgres:15
     environment:
@@ -10,6 +12,25 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  # 2. Backend Service (เพิ่มใหม่)
+  backend:
+    build: ./backend   # สั่งให้ Docker ไปสร้าง Image จากโฟลเดอร์ backend
+    ports:
+      - "3000:3000"    # พอร์ตที่ Backend รัน (แก้ตัวเลขหน้าได้ถ้าชน)
+    environment:
+      # เชื่อมต่อ Database ข้างบน (สังเกตว่าใช้ชื่อ service 'postgres' แทน localhost)
+      - DATABASE_URL=postgresql://postgres:password123@postgres:5432/preflight_db
+    depends_on:
+      - postgres       # รอให้ Database ติดก่อนค่อยรัน Backend
+
+  # 3. Frontend Service (เพิ่มใหม่)
+  frontend:
+    build: ./frontend  # สั่งให้ Docker ไปสร้าง Image จากโฟลเดอร์ frontend
+    ports:
+      - "8080:80"      # พอร์ตหน้าเว็บ (สมมติว่าข้างในใช้ Nginx พอร์ต 80)
+    depends_on:
+      - backend        # รอให้ Backend ติดก่อนค่อยรัน Frontend
 
 volumes:
   pgdata:
