@@ -83,3 +83,52 @@ export type NewNews = typeof news.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Asset = typeof assets.$inferSelect;
 export type Borrowing = typeof borrowings.$inferSelect;
+
+// ==========================================
+// 7. ตาราง events (กิจกรรมที่เปิดรับสต๊าฟ)
+// ==========================================
+export const events = pgTable('events', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  status: varchar('status', { length: 50 }).default('open').notNull(), // open, closed
+  createdBy: varchar('created_by', { length: 20 })
+    .notNull()
+    .references(() => users.studentId),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ==========================================
+// 8. ตาราง event_roles (ตำแหน่งสต๊าฟในแต่ละกิจกรรม + โควต้า)
+// ==========================================
+export const eventRoles = pgTable('event_roles', {
+  id: serial('id').primaryKey(),
+  eventId: integer('event_id')
+    .notNull()
+    .references(() => events.id, { onDelete: 'cascade' }),
+  roleName: varchar('role_name', { length: 100 }).notNull(), // เช่น สวัสดิการ, พยาบาล
+  totalQuota: integer('total_quota').notNull(),              // จำนวนที่ต้องการทั้งหมด
+  availableQuota: integer('available_quota').notNull(),      // จำนวนที่ยังรับได้เหลืออยู่
+});
+
+// ==========================================
+// 9. ตาราง applications (ข้อมูลการสมัครของนักศึกษา)
+// ==========================================
+export const applications = pgTable('applications', {
+  id: serial('id').primaryKey(),
+  eventId: integer('event_id')
+    .notNull()
+    .references(() => events.id, { onDelete: 'cascade' }),
+  roleId: integer('role_id')
+    .notNull()
+    .references(() => eventRoles.id, { onDelete: 'cascade' }),
+  studentId: varchar('student_id', { length: 20 })
+    .notNull()
+    .references(() => users.studentId, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 50 }).default('pending').notNull(), // pending, approved, rejected
+  appliedAt: timestamp('applied_at').defaultNow().notNull(),
+});
+
+export type Event = typeof events.$inferSelect;
+export type EventRole = typeof eventRoles.$inferSelect;
+export type Application = typeof applications.$inferSelect;
