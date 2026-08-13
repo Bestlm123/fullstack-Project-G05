@@ -1,10 +1,14 @@
-import { pgTable, serial, varchar, integer, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+export const roleEnum = pgEnum('role', ['admin', 'user']);
 
 // 1. ตาราง users
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   studentId: varchar('student_id', { length: 20 }).notNull().unique(),
   fullName: varchar('full_name', { length: 255 }).notNull(),
+  role: roleEnum('role').default('user').notNull(),
+  faculty: varchar('faculty', { length: 100 }).default('Engineering').notNull(),
+  email: varchar('email', { length: 255 }).unique(),
 });
 
 // 2. ตาราง assets (เพิ่ม available_quantity)
@@ -28,7 +32,7 @@ export const borrowings = pgTable('borrowings', {
     .references(() => assets.id, { onDelete: 'cascade' }),
   quantity: integer('quantity').default(1).notNull(), // 👈 จำนวนชิ้นที่ยืมในครั้งนี้
   borrowDate: timestamp('borrow_date').defaultNow().notNull(),
-  returnDate: timestamp('return_date'),
+  returnDate: timestamp('return_date').notNull(),
   status: varchar('status', { length: 50 }).default('borrowed').notNull(),
 });
 

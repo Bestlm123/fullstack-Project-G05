@@ -97,19 +97,20 @@ router.delete('/items/:id', async (req, res) => {
 // POST /api/borrow - ยืมพัสดุ (ตัดสต็อกตามจำนวนที่ระบุ)
 router.post('/borrow', async (req, res) => {
   try {
-    const { studentId, fullName, assetId, quantity, borrowDate, returnDate } = req.body;
+    // 1. 🚨 รับค่า faculty (คณะ) เพิ่มเข้ามา
+    const { studentId, fullName, assetId, quantity, borrowDate, returnDate, role, email, faculty } = req.body;
     const borrowQty = quantity !== undefined ? Number(quantity) : 1;
 
-    if (!studentId || !fullName || !assetId) {
-      return res.status(400).json({ error: 'studentId, fullName, and assetId are required' });
+    if (!studentId || !fullName || !assetId || !returnDate) {
+      return res.status(400).json({ error: 'studentId, fullName, assetId, and returnDate are required' });
     }
 
-    // 1. ตรวจสอบพัสดุและจำนวนคงเหลือ
+    // 2. ตรวจสอบพัสดุและจำนวนคงเหลือ...
     const targetAsset = await db.select().from(assets).where(eq(assets.id, assetId));
     if (targetAsset.length === 0) {
       return res.status(404).json({ error: 'Asset not found' });
     }
-
+    
     const currentAsset = targetAsset[0];
     if (currentAsset.availableQuantity < borrowQty) {
       return res.status(400).json({ 
@@ -117,14 +118,20 @@ router.post('/borrow', async (req, res) => {
       });
     }
 
-    // 2. จัดการผู้ใช้งาน
+    // 3. จัดการผู้ใช้งาน (🚨 บันทึก faculty ของนักศึกษาลงไป)
     let user = await db.select().from(users).where(eq(users.studentId, studentId));
     if (user.length === 0) {
-      const newUser = await db.insert(users).values({ studentId, fullName }).returning();
+      const newUser = await db.insert(users).values({ 
+        studentId, 
+        fullName,
+        role: role || 'user', 
+        email: email || null,
+        faculty: faculty || 'Engineering' // 👈 ถ้าไม่ได้ส่งมาให้ถือว่าเป็นเด็กวิดวะ (Engineering)
+      }).returning();
       user = newUser;
     }
 
-    // 3. บันทึกรายการยืม
+    // 4. บันทึกรายการยืม... 
     const newBorrowing = await db
       .insert(borrowings)
       .values({
@@ -132,12 +139,12 @@ router.post('/borrow', async (req, res) => {
         assetId,
         quantity: borrowQty,
         borrowDate: borrowDate ? new Date(borrowDate) : new Date(),
-        returnDate: returnDate ? new Date(returnDate) : null,
+        returnDate: new Date(returnDate), 
         status: 'borrowed',
       })
       .returning();
 
-    // 4. ตัดจำนวนพร้อมใช้งาน (availableQuantity)
+    // 5. ตัดจำนวนพร้อมใช้งาน...
     const newAvailableQty = currentAsset.availableQuantity - borrowQty;
     const newStatus = newAvailableQty === 0 ? 'unavailable' : 'available';
 
@@ -154,6 +161,7 @@ router.post('/borrow', async (req, res) => {
       borrowing: newBorrowing[0],
     });
   } catch (error) {
+    console.error("🔥 DB Error:", error);
     res.status(500).json({ error: 'Failed to process borrowing' });
   }
 });
