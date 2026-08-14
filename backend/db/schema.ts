@@ -43,6 +43,7 @@ export const news = pgTable('news', {
   title: varchar('title', { length: 255}).notNull(),          // หัวข้อข่าว
   content: text('content').notNull(),                          // เนื้อหาข่าว (ใช้ text เพื่อรองรับข้อความยาวๆ)
   
+  imageUrl: text('image_url'),
   // เก็บว่าใครเป็นคนโพสต์ข่าวนี้ (เชื่อมไปยัง studentId ของผู้โพสต์ที่เป็น admin)
   authorId: varchar('author_id', { length: 20 })
     .notNull()
