@@ -1,9 +1,5 @@
-/* นำเข้าฟอนต์ Prompt จาก Google (ห้ามมีแท็ก <style> ครอบในไฟล์ .css) */
 @import url('https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 
-/* CRITICAL URGENT FIX: Reset and Force Styles */
-
-/* 1. รีเซ็ตค่าพื้นฐานให้สะอาดที่สุด */
 * {
   margin: 0;
   padding: 0;
@@ -12,7 +8,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 2. บังคับพื้นหลังและสีตัวอักษรของทั้งหน้า */
 html, body {
   height: 100% !important;
   width: 100% !important;
@@ -20,11 +15,10 @@ html, body {
   padding: 0 !important;
   background-color: #f3f4f6 !important; 
   color: #374151 !important; 
-  font-family: "Prompt", sans-serif !important; /* เปลี่ยนฟอนต์ตรงนี้เรียบร้อยครับ */
+  font-family: "Prompt", sans-serif !important;
   display: block !important; 
 }
 
-/* 3. บังคับ Root container ของ React ให้เต็มหน้าจอและใช้ Flex */
 #root {
   display: flex !important;
   flex-direction: row !important; 
@@ -34,7 +28,6 @@ html, body {
   overflow: hidden; 
 }
 
-/* Layout หลัก */
 .app-container {
   display: flex;
   height: 100%;
@@ -42,111 +35,6 @@ html, body {
   background-color: transparent !important;
 }
 
-/* Sidebar */
-.sidebar {
-  width: 260px;
-  flex-shrink: 0; 
-  background-color: #ffffff !important; 
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid #e5e7eb;
-}
-
-.sidebar-logo {
-  padding: 24px 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.sidebar-logo h1 {
-  font-size: 20px;
-  font-weight: bold;
-  color: #8b0000;
-  margin: 0;
-}
-
-.sidebar-nav {
-  padding: 16px 12px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.nav-item.active {
-  background-color: #fce8e8;
-  color: #8b0000;
-  font-weight: 600;
-}
-
-.nav-item.inactive {
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.sidebar-footer {
-  padding: 20px;
-  border-top: 1px solid #e5e7eb;
-  background-color: #fafafa;
-}
-
-.user-profile {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #2d3748;
-  overflow: hidden;
-}
-
-.user-avatar img {
-  width: 100%;
-  height: 100%;
-}
-
-.user-info .name {
-  font-size: 14px;
-  font-weight: bold;
-  color: #111827;
-}
-
-.user-info .email {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.logout-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #dc2626;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 0;
-}
-
-/* Main Content */
 .main-content {
   flex: 1;
   display: flex;
@@ -155,21 +43,53 @@ html, body {
   background-color: #f3f4f6; 
 }
 
+/* =======================================================
+   Header & Social Media (อยู่ตรงกลาง)
+   ======================================================= */
 .header {
   height: 70px;
   flex-shrink: 0; 
   background-color: #ffffff;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 32px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  position: relative;
 }
 
-.header h2 {
+.header-title h2 {
   margin: 0;
   color: #8b0000;
   font-size: 22px;
   font-weight: bold;
+}
+
+.header-socials {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.header-social-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  color: #8b0000;
+  text-decoration: none;
+}
+
+.header-social-btn:hover {
+  background-color: #e5e7eb;
+  transform: translateY(-2px);
 }
 
 .content-area {
@@ -178,7 +98,9 @@ html, body {
   flex: 1;
 }
 
-/* Cards */
+/* =======================================================
+   Cards & Tables
+   ======================================================= */
 .card {
   background-color: #ffffff !important; 
   padding: 24px;
@@ -187,83 +109,12 @@ html, body {
   margin-bottom: 24px;
 }
 
-.card-title {
-  margin-top: 0;
-  margin-bottom: 16px;
-  color: #111827;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Forms */
-.form-group {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.form-input {
-  padding: 10px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-  flex: 1;
-  min-width: 200px;
-  background-color: #ffffff !important; 
-  color: #374151 !important; 
-}
-
-.form-input.desc {
-  flex: 2;
-}
-
-.form-input.qty {
-  width: 100px;
-  flex: none;
-}
-
-/* Buttons */
-.btn-primary {
-  background-color: #8b0000 !important; 
-  color: white !important; 
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-
-.btn-primary:hover {
-  background-color: #6b0000;
-}
-
-.btn-delete {
-  background-color: #fee2e2;
-  color: #ff0000;
-  border: none;
-  padding: 6px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 13px;
-  transition: background 0.2s;
-}
-
-.btn-delete:hover {
-  background-color: #fca5a5;
-}
-
-/* Table */
 .table-card {
   background-color: #ffffff !important; 
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   overflow: hidden;
+  padding: 24px;
 }
 
 table {
@@ -273,17 +124,16 @@ table {
 }
 
 thead tr {
-  background-color: #f9fafb !important; 
+  background-color: #ffffff !important; 
   border-bottom: 1px solid #e5e7eb;
 }
 
 th {
   padding: 16px 24px;
   color: #6b7280;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  text-transform: none;
 }
 
 th.text-center, td.text-center {
@@ -328,30 +178,54 @@ td.text-muted {
   padding: 32px;
   color: #6b7280;
 }
-/* =========================================================================
-   สไตล์ที่เพิ่มใหม่ สำหรับ Modal Popup และ ตาราง
-   ========================================================================= */
 
-/* Thumbnail รูปภาพในตาราง */
-.item-thumbnail {
-  width: 48px;
-  height: 48px;
-  background-color: #f3f4f6;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  margin: 0 auto;
+/* =======================================================
+   Buttons
+   ======================================================= */
+.btn-primary {
+  background-color: #8b0000 !important; 
+  color: white !important; 
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background 0.2s;
 }
 
-.item-thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.btn-primary:hover {
+  background-color: #6b0000;
 }
 
-/* ปุ่มแบบ Icon ในตาราง (แก้ไข / ลบ) */
+.btn-delete {
+  background-color: #fee2e2;
+  color: #ff0000;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-delete:hover {
+  background-color: #fca5a5;
+}
+
+.btn-secondary {
+  background-color: #f3f4f6 !important;
+  color: #4b5563 !important;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover { 
+  background-color: #e5e7eb !important; 
+}
+
 .btn-icon {
   display: flex;
   align-items: center;
@@ -373,21 +247,43 @@ td.text-muted {
   background-color: #fde68a;
 }
 
-/* ปุ่มยกเลิกสีเทา */
-.btn-secondary {
-  background-color: #f3f4f6 !important;
-  color: #4b5563 !important;
-  border: none;
-  padding: 10px 20px;
+.btn-borrow {
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.btn-borrow:hover {
+  background-color: #dbeafe;
+}
+
+.btn-borrow:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.btn-return {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #10b981;
+  font-weight: 500;
   border-radius: 6px;
   cursor: pointer;
-  font-weight: 500;
-  font-size: 14px;
-  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
-.btn-secondary:hover { background-color: #e5e7eb !important; }
 
-/* Modal Overlay (พื้นหลังมืดๆ เบลอๆ) */
+.btn-return:hover {
+  background-color: #10b981;
+  color: white;
+}
+
+/* =======================================================
+   Modals & Forms
+   ======================================================= */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -399,7 +295,6 @@ td.text-muted {
   backdrop-filter: blur(2px);
 }
 
-/* ตัวกล่อง Modal */
 .modal-content {
   background-color: #ffffff;
   border-radius: 12px;
@@ -432,9 +327,11 @@ td.text-muted {
   background: none; border: none; color: #6b7280; cursor: pointer;
   padding: 4px; display: flex; align-items: center; border-radius: 4px;
 }
-.btn-close:hover { background-color: #f3f4f6; }
 
-/* Form ใน Modal */
+.btn-close:hover { 
+  background-color: #f3f4f6; 
+}
+
 .modal-form {
   display: flex;
   flex-direction: column;
@@ -452,7 +349,14 @@ td.text-muted {
 }
 
 .form-input {
-  width: 100%; 
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+  background-color: #ffffff !important; 
+  color: #374151 !important; 
 }
 
 .modal-actions {
@@ -462,38 +366,4 @@ td.text-muted {
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid #e5e7eb;
-}
-/* =========================================
-   สไตล์เพิ่มเติม สำหรับระบบ ยืม-คืน
-   ========================================= */
-
-.btn-borrow {
-  background-color: #eff6ff;
-  color: #2563eb;
-  font-weight: 500;
-}
-.btn-borrow:hover {
-  background-color: #dbeafe;
-}
-.btn-borrow:disabled {
-  background-color: #f3f4f6;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.btn-return {
-  background-color: #ecfdf5;
-  color: #059669;
-  border: 1px solid #10b981;
-  font-weight: 500;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-.btn-return:hover {
-  background-color: #10b981;
-  color: white;
 }
