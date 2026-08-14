@@ -612,7 +612,7 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
                           disabled={displayAvailable <= 0 || item.status !== 'available'}
                           onClick={() => openAddToCartModal(item)}
                         >
-                          {displayAvailable > 0 && item.status === 'available' ? '+ ใส่ตะกร้า' : 'หมดแล้ว'}
+                          {displayAvailable > 0 && item.status === 'available' ? '+ ใส่ตะกร้า' : 'ไม่สามารถยืมได้'}
                         </button>
                       )}
                     </td>
