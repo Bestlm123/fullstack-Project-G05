@@ -182,21 +182,21 @@ function App() {
 
   if (!currentUser) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f3f4f6' }}>
-        <div className="card" style={{ width: '400px', padding: '32px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh',width: '100%', background: '#f3f4f6' }}>
+        <div className="card" style={{ width: '400px', padding: '32px'}}>
           <h2 style={{ textAlign: 'center', color: '#8b0000', marginBottom: '24px' }}>Log in</h2>
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="form-field">
               <label>Email(@cmu.ac.th)</label>
-              <input required type="email" className="form-input" placeholder="thittawin_k@cmu.ac.th" value={loginData.email} onChange={e => setLoginData({...loginData, email: e.target.value})} />
+              <input required type="email" className="form-input" placeholder="test@cmu.ac.th" value={loginData.email} onChange={e => setLoginData({...loginData, email: e.target.value})} />
             </div>
             <div className="form-field">
               <label>รหัสนักศึกษา</label>
-              <input required type="text" className="form-input" placeholder="670610706" value={loginData.studentId} onChange={e => setLoginData({...loginData, studentId: e.target.value})} />
+              <input required type="text" className="form-input" placeholder="6xxxxxxxx" value={loginData.studentId} onChange={e => setLoginData({...loginData, studentId: e.target.value})} />
             </div>
             <div className="form-field">
               <label>ชื่อ-นามสกุล</label>
-              <input required type="text" className="form-input" placeholder="ธิษณ์ธาวิน คงนา" value={loginData.fullName} onChange={e => setLoginData({...loginData, fullName: e.target.value})} />
+              <input required type="text" className="form-input" placeholder="เขียนโค้ด บัคตลอด" value={loginData.fullName} onChange={e => setLoginData({...loginData, fullName: e.target.value})} />
             </div>
             <button type="submit" className="btn-primary" style={{ marginTop: '8px' }}>เข้าสู่ระบบ</button>
           </form>
