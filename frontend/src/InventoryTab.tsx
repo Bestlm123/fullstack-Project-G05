@@ -595,9 +595,9 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
                       </span>
                     </td>
                     <td className="text-center">
-                      <span style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '4px', fontWeight: '500', backgroundColor: item.status === 'available' ? '#dcfce7' : '#f3f4f6', color: item.status === 'available' ? '#166534' : '#4b5563' }}>
+                      <span style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '4px', fontWeight: '500', backgroundColor: item.status === 'available' ? '#dcfce7' : '#f00000', color: item.status === 'available' ? '#166534' : '#ffffff' }}>
                         {item.status === 'available' ? 'พร้อมยืม' : 'ปิดใช้งาน'}
-                      </span>
+                      </span> 
                     </td>
                     <td className="text-center" style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                       {currentRole === 'admin' ? (
@@ -612,7 +612,7 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
                           disabled={displayAvailable <= 0 || item.status !== 'available'}
                           onClick={() => openAddToCartModal(item)}
                         >
-                          {displayAvailable > 0 && item.status === 'available' ? '+ ใส่ตะกร้า' : 'หมดแล้ว'}
+                          {displayAvailable > 0 && item.status === 'available' ? '+ ใส่ตะกร้า' : 'ไม่สามารถยืมได้'}
                         </button>
                       )}
                     </td>
