@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { db } from '../../db/index.js';
 import { events, eventRoles, applications, users } from '../../db/schema.js';
-import { eq, and } from 'drizzle-orm'; // 🚨 อย่าลืม import 'and' เพิ่มเข้ามาด้วยนะ
+import { eq, and } from 'drizzle-orm'; //  อย่าลืม import 'and' เพิ่มเข้ามาด้วยนะ
 
 const router = Router();
 
 // ==========================================
-// 🎯 API สำหรับนักศึกษากดสมัครเป็นสต๊าฟ
+//  API สำหรับนักศึกษากดสมัครเป็นสต๊าฟ
 // ==========================================
 router.post('/apply', async (req, res) => {
   try {
@@ -51,7 +51,7 @@ router.post('/apply', async (req, res) => {
       return res.status(400).json({ error: 'You have already applied for this role (คุณสมัครตำแหน่งนี้ไปแล้ว)' });
     }
 
-    // 5. 🎉 ผ่านทุกด่าน! บันทึกข้อมูลการสมัครลง Database
+    // 5.  ผ่านทุกด่าน! บันทึกข้อมูลการสมัครลง Database
     const newApplication = await db.insert(applications)
       .values({
         eventId,
@@ -73,7 +73,7 @@ router.post('/apply', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("🔥 Apply Error:", error);
+    console.error(" Apply Error:", error);
     res.status(500).json({ error: 'Failed to process application' });
   }
 });
@@ -107,7 +107,7 @@ router.post('/events', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("🔥 Create Event Error:", error);
+    console.error(" Create Event Error:", error);
     res.status(500).json({ error: 'Failed to create event' });
   }
 });
@@ -145,13 +145,13 @@ router.post('/events/:eventId/roles', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("🔥 Add Role Error:", error);
+    console.error(" Add Role Error:", error);
     res.status(500).json({ error: 'Failed to add role' });
   }
 });
 
 // ==========================================
-// ✅ API สำหรับ Admin จัดการสถานะการสมัคร (Approve / Reject)
+//  API สำหรับ Admin จัดการสถานะการสมัคร (Approve / Reject)
 // ==========================================
 router.put('/applications/:id/status', async (req, res) => {
   try {
@@ -176,7 +176,7 @@ router.put('/applications/:id/status', async (req, res) => {
       return res.status(400).json({ error: `Application is already ${status}` });
     }
 
-    // 4. 🚨 กรณี: Admin กด "ปฏิเสธ" (เปลี่ยนจาก pending -> rejected)
+    // 4.  กรณี: Admin กด "ปฏิเสธ" (เปลี่ยนจาก pending -> rejected)
     // ต้องคืนโควต้าให้ตำแหน่งนั้น 1 ที่ (เพราะตอนสมัครเราหักจองไว้แล้ว)
     if (status === 'rejected' && currentApp.status === 'pending') {
       const targetRole = await db.select().from(eventRoles).where(eq(eventRoles.id, currentApp.roleId));
@@ -187,7 +187,7 @@ router.put('/applications/:id/status', async (req, res) => {
       }
     }
 
-    // 5. 🚨 กรณี: Admin เปลี่ยนใจ (เปลี่ยนจาก rejected -> approved)
+    // 5.  กรณี: Admin เปลี่ยนใจ (เปลี่ยนจาก rejected -> approved)
     // เผื่อกรณีกดผิด ต้องไปหักโควต้าใหม่อีกรอบ และต้องเช็คด้วยว่าโควต้ายังเหลือไหม
     if (status === 'approved' && currentApp.status === 'rejected') {
        const targetRole = await db.select().from(eventRoles).where(eq(eventRoles.id, currentApp.roleId));
@@ -216,7 +216,7 @@ router.put('/applications/:id/status', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("🔥 Update Application Status Error:", error);
+    console.error(" Update Application Status Error:", error);
     res.status(500).json({ error: 'Failed to update application status' });
   }
 });

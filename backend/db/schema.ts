@@ -19,11 +19,15 @@ export const assets = pgTable('assets', {
   quantity: integer('quantity').default(1).notNull(),                 // จำนวนพัสดุทั้งหมดที่มี
   availableQuantity: integer('available_quantity').default(1).notNull(), // จำนวนที่พร้อมใช้งานคงเหลือ
   status: varchar('status', { length: 50 }).default('available').notNull(),
+  imageUrl: text('image_url').notNull(),
 });
 
 // 3. ตาราง borrowings (เพิ่ม quantity ยืมกี่ชิ้น)
 export const borrowings = pgTable('borrowings', {
   id: serial('id').primaryKey(),
+  transactionId: varchar('transaction_id', { length: 50 }).notNull(), // รหัสบิล
+  projectName: varchar('project_name', { length: 255 }).notNull(), // ชื่องาน/กิจกรรม
+  pickupDate: timestamp('pickup_date').notNull(), // วันที่นัดมารับของ
   studentId: varchar('student_id', { length: 20 })
     .notNull()
     .references(() => users.studentId, { onDelete: 'cascade' }),
@@ -129,6 +133,48 @@ export const applications = pgTable('applications', {
   status: varchar('status', { length: 50 }).default('pending').notNull(), // pending, approved, rejected
   appliedAt: timestamp('applied_at').defaultNow().notNull(),
 });
+
+// ==========================================
+// 10. ตาราง user_profiles (ข้อมูลส่วนตัวเชิงลึกสำหรับสมัครกิจกรรม)
+// ==========================================
+export const userProfiles = pgTable('user_profiles', {
+  // 4. รหัสนักศึกษา (เป็น Primary Key และโยงกับตาราง users อัตโนมัติ)
+  studentId: varchar('student_id', { length: 20 })
+    .primaryKey()
+    .references(() => users.studentId, { onDelete: 'cascade' }),
+    
+  // 3. ชื่อเล่น
+  nickname: varchar('nickname', { length: 50 }).notNull(),
+  
+  // 1. มีเสื้อช็อปหรือไม่ (เก็บเป็น boolean: true = YES, false = NO)
+  hasShopShirt: boolean('has_shop_shirt').notNull(),
+  
+  // 5. สาขา (แนะนำให้เก็บเป็นตัวย่อภาษาอังกฤษ เช่น 'CPE', 'ME', 'IE-LM' เพื่อประหยัดพื้นที่)
+  major: varchar('major', { length: 20 }).notNull(),
+  
+  // 6. ส่วนสูง (เซนติเมตร)
+  height: integer('height').notNull(),
+  
+  // 7. โรคประจำตัว (ใช้ text เผื่อพิมพ์ยาว และปล่อยให้เป็น null ได้ถ้าไม่มีโรคประจำตัว)
+  medicalCondition: text('medical_condition'),
+  
+  // 8. ยาที่แพ้
+  drugAllergies: text('drug_allergies'),
+  
+  // 9. อาหารที่แพ้
+  foodAllergies: text('food_allergies'),
+  
+  // 10. ช่องทางการติดต่อ (เช่น Line ID, Facebook URL, IG)
+  contactChannel: varchar('contact_channel', { length: 255 }).notNull(),
+  
+  // 11. เบอร์โทรศัพท์
+  phoneNumber: varchar('phone_number', { length: 15 }).notNull(),
+  
+  // เก็บเวลาที่อัปเดตข้อมูลล่าสุด
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type UserProfile = typeof userProfiles.$inferSelect;
 
 export type Event = typeof events.$inferSelect;
 export type EventRole = typeof eventRoles.$inferSelect;
