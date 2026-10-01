@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Calendar, ArrowRight, Image as ImageIcon, Plus, X, Megaphone, Trash2, ExternalLink, Settings } from 'lucide-react';
 import './HomePage.css';
 
-const API_URL = 'http://localhost:3000/api'; 
+const API_URL = 'http://localhost:3001/api'; 
 
 interface Banner { id: number; imageUrl: string; isActive: boolean; }
 interface NewsItem { id: number; title: string; content: string; createdAt: string; imageUrl?: string; }

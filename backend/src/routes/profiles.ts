@@ -2,13 +2,14 @@ import { Router } from 'express';
 import { db } from '../../db/index.js';
 import { userProfiles } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { requireAuth } from '../utils/authMiddleware.js'; 
 
 const router = Router();
 
-// API: GET /profile/:studentId
-router.get('/:studentId', async (req, res) => {
+// API: GET /profile/:studentId (ต้องล็อกอิน)
+router.get('/:studentId', requireAuth, async (req, res) => {
   try {
-    const { studentId } = req.params;
+    const studentId = req.params.studentId as string;
     const profile = await db.select().from(userProfiles).where(eq(userProfiles.studentId, studentId));
     
     if (profile.length === 0) {
@@ -20,8 +21,8 @@ router.get('/:studentId', async (req, res) => {
   }
 });
 
-// API: POST /profile
-router.post('/', async (req, res) => {
+// API: POST /profile (ต้องล็อกอิน)
+router.post('/', requireAuth, async (req, res) => {
   try {
     const { 
       studentId, nickname, hasShopShirt, major, height, 
