@@ -69,9 +69,17 @@ const cmuStrategy = new OAuth2Strategy({
 
       const studentEmail = decodedInfo.email; 
       
-      // ✅ FIX: ดึงรหัส 9 หลักจาก Payload ของมหาลัยตรงๆ
-      const studentId = decodedInfo.student_id || decodedInfo.cmuitaccount || studentEmail.split('@')[0];
-      const fullName = decodedInfo.name || "Unknown";
+      // ✅ FIX: ดึงออบเจกต์ basic_info ออกมาก่อน
+      const basicInfo = decodedInfo.basic_info || {};
+      
+      // ✅ FIX: ดึงรหัส 9 หลักจาก basic_info.student_id โดยตรง
+      const studentId = basicInfo.student_id || studentEmail.split('@')[0];
+      
+      // ✅ FIX: ดึงชื่อ-นามสกุลภาษาไทยจาก basic_info
+      const fullName = basicInfo.firstname_TH 
+        ? `${basicInfo.firstname_TH} ${basicInfo.lastname_TH}` 
+        : (decodedInfo.name || "Unknown");
+
       const finalFaculty = getFacultyFromStudentId(studentId);
 
       const loggedInUser = await db.insert(users)
