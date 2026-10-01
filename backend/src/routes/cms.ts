@@ -11,22 +11,39 @@ router.get('/news', async (req, res) => {
   try {
     const allNews = await db.select().from(news);
     res.status(200).json(allNews);
-  } catch (error) { res.status(500).json({ error: 'Failed to fetch news' }); }
+  } catch (error) { 
+    console.error("Fetch news error:", error);
+    res.status(500).json({ error: 'Failed to fetch news' }); 
+  }
 });
 
 router.post('/news', requireAdmin, async (req, res) => {
   try {
-    const { title, content, authorId } = req.body;
-    const newArticle = await db.insert(news).values({ title, content, authorId }).returning();
+    // 🌟 FIX: ดึง imageUrl ออกมาจาก req.body ด้วย
+    const { title, content, imageUrl, authorId } = req.body;
+    
+    const newArticle = await db.insert(news).values({ 
+      title, 
+      content, 
+      imageUrl: imageUrl || null, 
+      authorId: authorId || null 
+    }).returning();
+    
     res.status(201).json(newArticle[0]);
-  } catch (error) { res.status(500).json({ error: 'Failed to add news' }); }
+  } catch (error) { 
+    console.error("Add news error:", error);
+    res.status(500).json({ error: 'Failed to add news' }); 
+  }
 });
 
 router.delete('/news/:id', requireAdmin, async (req, res) => {
   try {
-    await db.delete(news).where(eq(news.id, parseInt(req.params.id as string))); // 👈 แก้ตรงนี้
+    await db.delete(news).where(eq(news.id, parseInt(req.params.id as string)));
     res.status(204).send();
-  } catch (error) { res.status(500).json({ error: 'Failed to delete news' }); }
+  } catch (error) { 
+    console.error("Delete news error:", error);
+    res.status(500).json({ error: 'Failed to delete news' }); 
+  }
 });
 
 // --- Banners ---

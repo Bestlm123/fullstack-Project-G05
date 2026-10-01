@@ -16,6 +16,6 @@ router.use('/profile', profileRoutes);
 router.use('/events', recruitmentRoutes);
 router.use('/items', assetRoutes);
 router.use('/borrowings', borrowingRoutes);
-router.use('/cms', cmsRoutes);
+router.use('/', cmsRoutes);
 
 export default router;

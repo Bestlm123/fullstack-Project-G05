@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Calendar, ArrowRight, Image as ImageIcon, Plus, X, Megaphone, Trash2, ExternalLink, Settings } from 'lucide-react';
 import './HomePage.css';
 
-const API_URL = 'http://localhost:3001/api'; 
+const API_URL = 'http://localhost:8000/api'; 
 
 interface Banner { id: number; imageUrl: string; isActive: boolean; }
 interface NewsItem { id: number; title: string; content: string; createdAt: string; imageUrl?: string; }
@@ -12,7 +12,7 @@ interface EventItem { id: number; date: string; month: string; title: string; ti
 
 interface HomePageProps {
   currentRole: 'admin' | 'user';
-  currentUserId: string; // <-- เพิ่มบรรทัดนี้
+  currentUserId: string;
 }
 
 export default function HomePage({ currentRole, currentUserId }: HomePageProps) {
@@ -40,7 +40,7 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
 
   const fetchHomePageData = useCallback(async () => {
     try {
-      const bannerRes = await axios.get(`${API_URL}/banners`);
+      const bannerRes = await axios.get(`${API_URL}/cms/banners`);
       const activeBanners = bannerRes.data.filter((b: Banner) => b.isActive);
       if (activeBanners.length > 0) {
         setBanners(activeBanners);
@@ -48,11 +48,11 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
         setBanners([{ id: 0, imageUrl: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1200', isActive: true }]);
       }
 
-      const newsRes = await axios.get(`${API_URL}/news`);
+      const newsRes = await axios.get(`${API_URL}/cms/news`);
       const sortedNews = newsRes.data.sort((a: NewsItem, b: NewsItem) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setNewsList(sortedNews);
 
-      const settingsRes = await axios.get(`${API_URL}/settings`);
+      const settingsRes = await axios.get(`${API_URL}/cms/settings`);
       const cdDate = settingsRes.data.find((s: SiteSetting) => s.key === 'countdown_date');
       const cdTitle = settingsRes.data.find((s: SiteSetting) => s.key === 'countdown_title');
       const cdImage = settingsRes.data.find((s: SiteSetting) => s.key === 'countdown_image');
@@ -97,7 +97,7 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
     const url = prompt('ใส่ลิงก์รูปภาพ (URL) เพื่อเพิ่มในสไลด์แบนเนอร์:');
     if (url) {
       try {
-        await axios.post(`${API_URL}/banners`, { imageUrl: url, isActive: true });
+        await axios.post(`${API_URL}/cms/banners`, { imageUrl: url, isActive: true });
         fetchHomePageData();
       } catch (error) {
         console.error(error);
@@ -114,22 +114,23 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
   const submitNewNews = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/news`, {
+      await axios.post(`${API_URL}/cms/news`, {
         title: newNewsData.title,
         content: newNewsData.content,
         imageUrl: newNewsData.imageUrl || null, 
-        authorId: currentUserId // <-- ใช้ไอดีคนที่ล็อกอินอยู่
+        authorId: currentUserId 
       });
       alert('เพิ่มข่าวสำเร็จ!');
       setIsAddNewsModalOpen(false); 
       fetchHomePageData(); 
     } catch (error) {
       console.error(error);
+      let errorMsg = 'เกิดข้อผิดพลาดในการเพิ่มข่าว';
       if (axios.isAxiosError(error)) {
-        alert(`เพิ่มข่าวไม่สำเร็จ: ${error.response?.data?.error}`);
-      } else {
-        alert('เกิดข้อผิดพลาดในการเพิ่มข่าว');
+        // 🌟 ดึง error จาก backend หรือแสดง message กลางๆ แทนการปล่อยให้เป็น undefined
+        errorMsg = error.response?.data?.error || error.response?.data?.message || error.message;
       }
+      alert(`เพิ่มข่าวไม่สำเร็จ: ${errorMsg}`);
     }
   };
 

@@ -444,7 +444,7 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
           </div>
 
           {cart.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>ตะกร้าว่างเปล่าครับ กลับไปเลือกของก่อนนะ</div>
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>ยังไม่มีรายการการยืม</div>
           ) : (
             <>
               <div style={{ borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', padding: '16px 0', marginBottom: '24px' }}>
