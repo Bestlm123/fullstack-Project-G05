@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { db } from '../../db/index.js';
 import { applications, userProfiles, users, eventRoles } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { requireAuth, requireAdmin } from '../utils/authMiddleware.js'; 
 
 const router = Router();
 
-// API: POST /events/apply
-router.post('/apply', async (req, res) => {
+// API: POST /events/apply (นักศึกษาทั่วไป ต้องล็อกอิน)
+router.post('/apply', requireAuth, async (req, res) => {
   try {
     const { eventId, roleId, studentId } = req.body;
     const profile = await db.select().from(userProfiles).where(eq(userProfiles.studentId, studentId));
@@ -25,10 +26,10 @@ router.post('/apply', async (req, res) => {
   }
 });
 
-// API: GET /events/:eventId/applications
-router.get('/:eventId/applications', async (req, res) => {
+// API: GET /events/:eventId/applications (แอดมินดูรายชื่อ)
+router.get('/:eventId/applications', requireAdmin, async (req, res) => {
   try {
-    const eventId = parseInt(req.params.eventId);
+    const eventId = parseInt(req.params.eventId as string);
     const applicantsList = await db
       .select({
         applicationId: applications.id, status: applications.status, appliedAt: applications.appliedAt,

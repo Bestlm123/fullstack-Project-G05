@@ -2,7 +2,7 @@
 // import axios from 'axios';
 // import { Plus, Edit, Trash2, Package, X, ShoppingCart, Minus } from 'lucide-react';
 
-// const API_URL = 'http://localhost:3000/api';
+// const API_URL = 'http://localhost:3001/api';
 
 // interface InventoryTabProps {
 //   currentRole: 'admin' | 'user';
@@ -375,7 +375,7 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Plus, Edit, Trash2, Package, X, ShoppingCart, Minus } from 'lucide-react';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'http://localhost:3001/api';
 
 interface InventoryTabProps {
   currentRole: 'admin' | 'user';

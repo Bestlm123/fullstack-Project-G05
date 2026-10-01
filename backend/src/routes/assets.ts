@@ -2,10 +2,11 @@ import { Router } from 'express';
 import { db } from '../../db/index.js';
 import { assets } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { requireAdmin } from '../utils/authMiddleware.js'; 
 
 const router = Router();
 
-// API: GET /items
+// API: GET /items (ทุกคนดูพัสดุได้)
 router.get('/', async (req, res) => {
   try {
     const allAssets = await db.select().from(assets);
@@ -15,8 +16,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// API: POST /items
-router.post('/', async (req, res) => {
+// API: POST /items (เฉพาะ Admin)
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const { id, name, category, quantity, status, imageUrl } = req.body;
     if (!id || !name || !category) return res.status(400).json({ error: 'ID, name, and category required' });
@@ -31,12 +32,12 @@ router.post('/', async (req, res) => {
   }
 });
 
-// API: PUT /items/:id
-router.put('/:id', async (req, res) => {
+// API: PUT /items/:id (เฉพาะ Admin)
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { name, category, quantity, availableQuantity, status, imageUrl } = req.body;
     const updatedAsset = await db.update(assets).set({ name, category, quantity, availableQuantity, status, imageUrl })
-      .where(eq(assets.id, req.params.id)).returning();
+      .where(eq(assets.id, req.params.id as string)).returning(); // 👈 แก้ตรงนี้
     if (updatedAsset.length === 0) return res.status(404).json({ error: 'Asset not found' });
     res.status(200).json(updatedAsset[0]);
   } catch (error) {
@@ -44,10 +45,10 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// API: DELETE /items/:id
-router.delete('/:id', async (req, res) => {
+// API: DELETE /items/:id (เฉพาะ Admin)
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
-    const deletedAsset = await db.delete(assets).where(eq(assets.id, req.params.id)).returning();
+    const deletedAsset = await db.delete(assets).where(eq(assets.id, req.params.id as string)).returning();
     if (deletedAsset.length === 0) return res.status(404).json({ error: 'Asset not found' });
     res.status(204).send();
   } catch (error) {

@@ -3,11 +3,11 @@ import { db } from '../../db/index.js';
 import { borrowings, assets, users } from '../../db/schema.js';
 import { getFacultyFromStudentId } from '../utils/helpers.js';
 import { eq } from 'drizzle-orm';
-
+import { requireAuth } from '../utils/authMiddleware.js';
 const router = Router();
 
-// API: POST /borrowings/borrow
-router.post('/borrow', async (req, res) => {
+// API: POST /borrowings/borrow (ต้องล็อกอิน)
+router.post('/borrow', requireAuth, async (req, res) => {
   try {
     const { studentId, fullName, projectName, pickupDate, returnDate, role, email, faculty, items } = req.body;
 
@@ -57,8 +57,8 @@ router.post('/borrow', async (req, res) => {
   }
 });
 
-// API: POST /borrowings/return
-router.post('/return', async (req, res) => {
+// API: POST /borrowings/return (ต้องล็อกอิน)
+router.post('/return', requireAuth, async (req, res) => {
   try {
     const { borrowingId } = req.body;
     const targetBorrowing = await db.select().from(borrowings).where(eq(borrowings.id, borrowingId));
@@ -83,8 +83,8 @@ router.post('/return', async (req, res) => {
   }
 });
 
-// API: GET /borrowings
-router.get('/', async (req, res) => {
+// API: GET /borrowings (ต้องล็อกอิน)
+router.get('/', requireAuth, async (req, res) => {
   try {
     const history = await db.select().from(borrowings);
     res.status(200).json(history);

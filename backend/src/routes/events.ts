@@ -1,16 +1,16 @@
 import { Router } from 'express';
 import { db } from '../../db/index.js';
 import { events, eventRoles, applications, users, userProfiles } from '../../db/schema.js';
-import { eq, and } from 'drizzle-orm'; //  อย่าลืม import 'and' เพิ่มเข้ามาด้วยนะ
+import { eq, and } from 'drizzle-orm';
+import { requireAuth, requireAdmin } from '../utils/authMiddleware.js';
 
 const router = Router();
 
 // ==========================================
-//  API สำหรับนักศึกษากดสมัครเป็นสต๊าฟ
+// 📝 API สำหรับนักศึกษากดสมัครเป็นสต๊าฟ
 // ==========================================
-router.post('/apply', async (req, res) => {
+router.post('/apply', requireAuth, async (req, res) => { 
   try {
-    // รับข้อมูลจากหน้าเว็บ (ตอนนี้เรายังไม่มีระบบ Login เลยให้ส่ง studentId มาตรงๆ ก่อน)
     const { studentId, eventId, roleId } = req.body;
 
     // 1. เช็คว่าส่งข้อมูลมาครบไหม
@@ -18,20 +18,14 @@ router.post('/apply', async (req, res) => {
       return res.status(400).json({ error: 'studentId, eventId, and roleId are required' });
     }
 
-    //  ด่านที่ 0: เช็คว่านักศึกษาคนนี้เคยกรอกประวัติ (userProfiles) หรือยัง?
+    // ด่านที่ 0: เช็คว่านักศึกษาคนนี้เคยกรอกประวัติ (userProfiles) หรือยัง?
     const profile = await db.select().from(userProfiles).where(eq(userProfiles.studentId, studentId));
     
     if (profile.length === 0) {
-      // ถ้ายังไม่มี ส่ง status 403 กลับไปบอกหน้าบ้านให้เด้งไปหน้าฟอร์มกรอกข้อมูล
       return res.status(403).json({ 
         requiresProfile: true, 
         message: 'กรุณากรอกข้อมูลส่วนตัว (เช่น โรคประจำตัว, อาหารที่แพ้) ให้ครบถ้วนก่อนทำการสมัครกิจกรรมครับ' 
       });
-    }
-
-    // 1. เช็คว่าส่งข้อมูลมาครบไหม
-    if (!studentId || !eventId || !roleId) {
-      return res.status(400).json({ error: 'studentId, eventId, and roleId are required' });
     }
 
     // 2. ด่านที่ 1: เช็คว่ากิจกรรมนี้มีอยู่จริงไหม และ "เปิดรับสมัครอยู่" หรือเปล่า?
@@ -54,10 +48,10 @@ router.post('/apply', async (req, res) => {
       return res.status(400).json({ error: 'Sorry, the quota for this role is already full (โควต้าเต็มแล้ว)' });
     }
 
-    // 4. ด่านที่ 3: เช็คว่านักศึกษาคนนี้ "เคยกดสมัครตำแหน่งนี้ไปแล้วหรือยัง?" (กันคนกดรัวๆ)
+    // 4. ด่านที่ 3: เช็คว่านักศึกษาคนนี้ "เคยกดสมัครตำแหน่งนี้ไปแล้วหรือยัง?"
     const existingApp = await db.select().from(applications)
       .where(
-        and( // ใช้ and() เพื่อเช็ค 2 เงื่อนไขพร้อมกัน
+        and(
           eq(applications.studentId, studentId),
           eq(applications.roleId, roleId)
         )
@@ -67,13 +61,13 @@ router.post('/apply', async (req, res) => {
       return res.status(400).json({ error: 'You have already applied for this role (คุณสมัครตำแหน่งนี้ไปแล้ว)' });
     }
 
-    // 5.  ผ่านทุกด่าน! บันทึกข้อมูลการสมัครลง Database
+    // 5. ผ่านทุกด่าน! บันทึกข้อมูลการสมัครลง Database
     const newApplication = await db.insert(applications)
       .values({
         eventId,
         roleId,
         studentId,
-        status: 'pending' // สถานะ 'pending' คือรอ Admin มากดยืนยันอีกที
+        status: 'pending'
       })
       .returning();
 
@@ -82,7 +76,6 @@ router.post('/apply', async (req, res) => {
       .set({ availableQuota: currentRole.availableQuota - 1 })
       .where(eq(eventRoles.id, roleId));
 
-    // ตอบกลับหน้าเว็บว่าสำเร็จ
     res.status(201).json({
       message: 'Application submitted successfully!',
       application: newApplication[0]
@@ -93,27 +86,26 @@ router.post('/apply', async (req, res) => {
     res.status(500).json({ error: 'Failed to process application' });
   }
 });
+
 // ==========================================
 // 🛠️ API สำหรับ Admin สร้างกิจกรรมและตำแหน่ง
 // ==========================================
 
 // 1. API สำหรับสร้างกิจกรรมใหม่
-router.post('/events', async (req, res) => {
+router.post('/events', requireAdmin, async (req, res) => {
   try {
     const { title, description, createdBy } = req.body;
 
-    // เช็คข้อมูลเบื้องต้น
     if (!title || !createdBy) {
       return res.status(400).json({ error: 'title and createdBy are required' });
     }
 
-    // บันทึกกิจกรรมลง Database
     const newEvent = await db.insert(events)
       .values({
         title,
         description,
         createdBy,
-        status: 'open' // ค่าเริ่มต้นให้เป็นเปิดรับสมัครเลย
+        status: 'open'
       })
       .returning();
 
@@ -129,29 +121,26 @@ router.post('/events', async (req, res) => {
 });
 
 // 2. API สำหรับเพิ่ม "ตำแหน่งและโควต้า" เข้าไปในกิจกรรม
-router.post('/events/:eventId/roles', async (req, res) => {
+router.post('/events/:eventId/roles', requireAdmin, async (req, res) => { 
   try {
-    const eventId = parseInt(req.params.eventId);
+    const eventId = parseInt(req.params.eventId as string);
     const { roleName, totalQuota } = req.body;
 
-    // เช็คข้อมูลเบื้องต้น
     if (!roleName || totalQuota === undefined) {
       return res.status(400).json({ error: 'roleName and totalQuota are required' });
     }
 
-    // เช็คก่อนว่ากิจกรรมนี้มีอยู่จริงไหม
     const targetEvent = await db.select().from(events).where(eq(events.id, eventId));
     if (targetEvent.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // บันทึกตำแหน่งและโควต้าลง Database
     const newRole = await db.insert(eventRoles)
       .values({
         eventId,
         roleName,
         totalQuota: Number(totalQuota),
-        availableQuota: Number(totalQuota) // ตอนสร้างครั้งแรก โควต้าที่ว่างจะเท่ากับโควต้าทั้งหมด
+        availableQuota: Number(totalQuota)
       })
       .returning();
 
@@ -167,19 +156,17 @@ router.post('/events/:eventId/roles', async (req, res) => {
 });
 
 // ==========================================
-//  API สำหรับ Admin จัดการสถานะการสมัคร (Approve / Reject)
+// ✅ API สำหรับ Admin จัดการสถานะการสมัคร (Approve / Reject)
 // ==========================================
-router.put('/applications/:id/status', async (req, res) => {
+router.put('/applications/:id/status', requireAdmin, async (req, res) => { 
   try {
-    const applicationId = parseInt(req.params.id);
-    const { status } = req.body; // ต้องส่ง 'approved' หรือ 'rejected' เข้ามา
+    const applicationId = parseInt(req.params.id as string);
+    const { status } = req.body; 
 
-    // 1. ดักไว้ก่อนว่าต้องส่ง status มาถูกต้องเท่านั้น
     if (!['approved', 'rejected'].includes(status)) {
       return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
     }
 
-    // 2. ค้นหาข้อมูลการสมัครนี้ว่ามีอยู่จริงไหม
     const targetApp = await db.select().from(applications).where(eq(applications.id, applicationId));
     if (targetApp.length === 0) {
       return res.status(404).json({ error: 'Application not found' });
@@ -187,13 +174,10 @@ router.put('/applications/:id/status', async (req, res) => {
 
     const currentApp = targetApp[0];
 
-    // 3. ป้องกัน Admin กดซ้ำ (ถ้าสถานะเดิมตรงกับที่ส่งมาอยู่แล้วก็ไม่ต้องทำอะไร)
     if (currentApp.status === status) {
       return res.status(400).json({ error: `Application is already ${status}` });
     }
 
-    // 4.  กรณี: Admin กด "ปฏิเสธ" (เปลี่ยนจาก pending -> rejected)
-    // ต้องคืนโควต้าให้ตำแหน่งนั้น 1 ที่ (เพราะตอนสมัครเราหักจองไว้แล้ว)
     if (status === 'rejected' && currentApp.status === 'pending') {
       const targetRole = await db.select().from(eventRoles).where(eq(eventRoles.id, currentApp.roleId));
       if (targetRole.length > 0) {
@@ -203,24 +187,18 @@ router.put('/applications/:id/status', async (req, res) => {
       }
     }
 
-    // 5.  กรณี: Admin เปลี่ยนใจ (เปลี่ยนจาก rejected -> approved)
-    // เผื่อกรณีกดผิด ต้องไปหักโควต้าใหม่อีกรอบ และต้องเช็คด้วยว่าโควต้ายังเหลือไหม
     if (status === 'approved' && currentApp.status === 'rejected') {
        const targetRole = await db.select().from(eventRoles).where(eq(eventRoles.id, currentApp.roleId));
        if (targetRole.length > 0) {
          if (targetRole[0].availableQuota <= 0) {
            return res.status(400).json({ error: 'Cannot approve. Quota is already full for this role.' });
          }
-         // หักโควต้าอีกรอบ
          await db.update(eventRoles)
           .set({ availableQuota: targetRole[0].availableQuota - 1 })
           .where(eq(eventRoles.id, currentApp.roleId));
        }
     }
 
-    // (หมายเหตุ: ถ้าเปลี่ยนจาก pending -> approved ไม่ต้องยุ่งกับโควต้า เพราะหักไว้ให้ตั้งแต่ตอนสมัครแล้ว)
-
-    // 6. อัปเดตสถานะใหม่ลง Database
     const updatedApp = await db.update(applications)
       .set({ status })
       .where(eq(applications.id, applicationId))

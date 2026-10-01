@@ -120,7 +120,7 @@
 
 // export default App;
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Sidebar from './components/Sidebar';
 import HomePage from './pages/HomePage';
@@ -149,57 +149,67 @@ interface User {
 function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'inventory' | 'history'>('home');
   
-  // 🌟 โหลดค่า User จาก localStorage เพื่อไม่ให้หลุดตอนรีเฟรช
+  // 🌟 โหลดค่า User จาก localStorage
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem('currentUser');
     return savedUser ? JSON.parse(savedUser) : null;
   });
-  
-  const [loginData, setLoginData] = useState({ email: '', studentId: '', fullName: '', faculty: 'Engineering' });
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await axios.post('http://localhost:3000/api/auth/login', loginData);
-      setCurrentUser(res.data); 
-      localStorage.setItem('currentUser', JSON.stringify(res.data)); // บันทึกลงเครื่อง
-    } catch (error) {
-      console.error(error);
-      if (axios.isAxiosError(error)) {
-        const errorMsg = error.response?.data?.error || error.message;
-        alert(`เข้าสู่ระบบไม่สำเร็จ!\nสาเหตุ: ${errorMsg}`);
-      } else {
-        alert('เข้าสู่ระบบไม่สำเร็จ!');
+  // 🌟 เพิ่ม useEffect: เพื่อดึงข้อมูล User อัตโนมัติเมื่อ Backend Redirect กลับมาที่หน้าแรกหลัง Login สำเร็จ
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        // ต้องใส่ withCredentials เพื่อให้ axios ส่ง Cookie session ไปเช็คกับ backend ด้วย
+        const res = await axios.get('http://localhost:3001/api/auth/me', { withCredentials: true });
+        if (res.data.user) {
+          setCurrentUser(res.data.user);
+          localStorage.setItem('currentUser', JSON.stringify(res.data.user));
+        }
+      } catch (error) {
+        console.log("ยังไม่ได้ล็อกอิน หรือ Session หมดอายุ");
       }
+    };
+
+    if (!currentUser) {
+      fetchUserData();
+    }
+  }, [currentUser]);
+
+  // 🌟 เปลี่ยนจากการส่ง Form เป็นการ Redirect ไปที่ Backend (Route 2 ที่เราทำไว้)
+  const handleLoginCMU = () => {
+    window.location.href = 'http://localhost:3001/api/auth/login/cmu';
+  };
+
+  const handleLogout = async () => {
+    try {
+      // แจ้ง Backend ให้ลบ Session ด้วย
+      await axios.post('http://localhost:3001/api/auth/logout', {}, { withCredentials: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setCurrentUser(null);
+      localStorage.removeItem('currentUser');
+      setActiveTab('home');
     }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('currentUser'); // ลบข้อมูลเมื่อกดออกจากระบบ
-    setActiveTab('home');
-  };
-
+  // 🌟 ปรับปรุงหน้า Login UI: ลบช่องกรอกข้อมูลออก เหลือแค่ปุ่มกด
   if (!currentUser) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', width: '100%', background: '#f3f4f6' }}>
-        <div className="card" style={{ width: '400px', padding: '32px' }}>
-          <h2 style={{ textAlign: 'center', color: '#8b0000', marginBottom: '24px' }}>Log in</h2>
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div className="form-field">
-              <label>Email(@cmu.ac.th)</label>
-              <input required type="email" className="form-input" placeholder="test@cmu.ac.th" value={loginData.email} onChange={e => setLoginData({...loginData, email: e.target.value})} />
-            </div>
-            <div className="form-field">
-              <label>รหัสนักศึกษา</label>
-              <input required type="text" className="form-input" placeholder="6xxxxxxxx" value={loginData.studentId} onChange={e => setLoginData({...loginData, studentId: e.target.value})} />
-            </div>
-            <div className="form-field">
-              <label>ชื่อ-นามสกุล</label>
-              <input required type="text" className="form-input" placeholder="เขียนโค้ด บัคตลอด" value={loginData.fullName} onChange={e => setLoginData({...loginData, fullName: e.target.value})} />
-            </div>
-            <button type="submit" className="btn-primary" style={{ marginTop: '8px' }}>เข้าสู่ระบบ</button>
-          </form>
+        <div className="card" style={{ width: '400px', padding: '32px', textAlign: 'center' }}>
+          <h2 style={{ color: '#8b0000', marginBottom: '16px' }}>Log in</h2>
+          <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '14px' }}>
+            กรุณาเข้าสู่ระบบด้วยบัญชี CMU IT Account
+          </p>
+          
+          <button 
+            onClick={handleLoginCMU} 
+            className="btn-primary" 
+            style={{ width: '100%', padding: '12px', fontSize: '16px' }}
+          >
+            เข้าสู่ระบบด้วย CMU Account
+          </button>
         </div>
       </div>
     );

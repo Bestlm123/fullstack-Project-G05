@@ -16,7 +16,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     # ดึงค่าตั้งค่าทั้งหมดจากไฟล์ .env
     env_file:
       - ./backend/.env
