@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { db } from '../../db/index.js';
-import { assets, users, borrowings, news, banners, siteSettings } from '../../db/schema.js';
+import { assets, users, borrowings, news, banners, siteSettings, userProfiles, applications, eventRoles } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 const router = Router();
 
 // ==========================================
-// 🧠 1. ฟังก์ชันช่วยแยกคณะจากรหัสนักศึกษา (อัปเดตล่าสุด 28 คณะ)
+//  1. ฟังก์ชันช่วยแยกคณะจากรหัสนักศึกษา (อัปเดตล่าสุด 28 คณะ)
 // ==========================================
 function getFacultyFromStudentId(studentId: string): string {
   if (!studentId || studentId.length < 4) return 'Other';
@@ -26,7 +26,7 @@ function getFacultyFromStudentId(studentId: string): string {
 }
 
 // ==========================================
-// 🔐 2. AUTH SYSTEM (ระบบ Login / บันทึกข้อมูลผู้ใช้)
+//  2. AUTH SYSTEM (ระบบ Login / บันทึกข้อมูลผู้ใช้)
 // ==========================================
 router.post('/auth/login', async (req, res) => {
   try {
@@ -36,7 +36,7 @@ router.post('/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'studentId and fullName are required' });
     }
 
-    // 🚨 ใช้ studentId เช็คคณะตรงๆ ได้เลย
+    //  ใช้ studentId เช็คคณะตรงๆ ได้เลย
     const finalFaculty = faculty || getFacultyFromStudentId(studentId);
 
     const loggedInUser = await db.insert(users)
@@ -63,13 +63,13 @@ router.post('/auth/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("🔥 Login Error:", error);
+    console.error(" Login Error:", error);
     res.status(500).json({ error: 'Failed to process login' });
   }
 });
 
 // ==========================================
-// 📦 3. ASSET MANAGEMENT (จัดการพัสดุ)
+//  3. ASSET MANAGEMENT (จัดการพัสดุ)
 // ==========================================
 router.get('/items', async (req, res) => {
   try {
@@ -82,14 +82,21 @@ router.get('/items', async (req, res) => {
 
 router.post('/items', async (req, res) => {
   try {
-    const { id, name, category, quantity, status } = req.body;
+    //  รับค่า imageUrl มาจากหน้าบ้านด้วย
+    const { id, name, category, quantity, status, imageUrl } = req.body;
 
     if (!id || !name || !category) return res.status(400).json({ error: 'ID, name, and category are required' });
     if (id.length > 10) return res.status(400).json({ error: 'ID length must not exceed 10 characters' });
 
     const totalQty = quantity !== undefined ? Number(quantity) : 1;
     const newAsset = await db.insert(assets).values({
-        id, name, category, quantity: totalQty, availableQuantity: totalQty, status: status || 'available',
+        id, 
+        name, 
+        category, 
+        quantity: totalQty, 
+        availableQuantity: totalQty, 
+        status: status || 'available',
+        imageUrl //  บันทึกลงฐานข้อมูล
       }).returning();
 
     res.status(201).json(newAsset[0]);
@@ -101,9 +108,12 @@ router.post('/items', async (req, res) => {
 router.put('/items/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const { name, category, quantity, availableQuantity, status } = req.body;
-    const updatedAsset = await db.update(assets).set({ name, category, quantity, availableQuantity, status })
-      .where(eq(assets.id, id)).returning();
+    //  รับ imageUrl มาเพื่ออัปเดต
+    const { name, category, quantity, availableQuantity, status, imageUrl } = req.body;
+    
+    const updatedAsset = await db.update(assets).set({ 
+      name, category, quantity, availableQuantity, status, imageUrl // 👈 สั่งอัปเดต
+    }).where(eq(assets.id, id)).returning();
 
     if (updatedAsset.length === 0) return res.status(404).json({ error: 'Asset not found' });
     res.status(200).json(updatedAsset[0]);
@@ -124,28 +134,20 @@ router.delete('/items/:id', async (req, res) => {
 });
 
 // ==========================================
-// 🔄 4. BORROW & RETURN SYSTEM (ระบบยืม-คืน)
+//  4. BORROW & RETURN SYSTEM (ระบบยืม-คืน)
 // ==========================================
+
 router.post('/borrow', async (req, res) => {
   try {
-    const { studentId, fullName, assetId, quantity, borrowDate, returnDate, role, email, faculty } = req.body;
-    const borrowQty = quantity !== undefined ? Number(quantity) : 1;
+    // 🚨 1. อัปเดตการรับค่าใหม่: รับ items เป็น Array และเพิ่ม projectName, pickupDate
+    const { studentId, fullName, projectName, pickupDate, returnDate, role, email, faculty, items } = req.body;
 
-    if (!studentId || !fullName || !assetId || !returnDate) {
-      return res.status(400).json({ error: 'studentId, fullName, assetId, and returnDate are required' });
+    // เช็คข้อมูลที่จำเป็น (items ต้องเป็น Array และมีของอย่างน้อย 1 ชิ้น)
+    if (!studentId || !fullName || !projectName || !pickupDate || !returnDate || !items || !items.length) {
+      return res.status(400).json({ error: 'Missing required fields or items array is empty' });
     }
 
-    const targetAsset = await db.select().from(assets).where(eq(assets.id, assetId));
-    if (targetAsset.length === 0) return res.status(404).json({ error: 'Asset not found' });
-
-    const currentAsset = targetAsset[0];
-    if (currentAsset.availableQuantity < borrowQty) {
-      return res.status(400).json({ 
-        error: `Not enough assets available. Requested: ${borrowQty}, Available: ${currentAsset.availableQuantity}` 
-      });
-    }
-
-    // 🚨 อัปเดต: ให้ใช้ studentId เช็คคณะตรงๆ เผื่อกรณีมายืมของครั้งแรก
+    // 2. จัดการข้อมูลผู้ใช้ (ถ้าเพิ่งเคยยืมครั้งแรก ให้สร้าง User ใหม่)
     let user = await db.select().from(users).where(eq(users.studentId, studentId));
     if (user.length === 0) {
       const newUser = await db.insert(users).values({ 
@@ -153,25 +155,64 @@ router.post('/borrow', async (req, res) => {
         fullName,
         role: role || 'user', 
         email: email || null,
-        faculty: faculty || getFacultyFromStudentId(studentId) // 👈 เช็คคณะจากฟังก์ชันทันที
+        faculty: faculty || getFacultyFromStudentId(studentId)
       }).returning();
       user = newUser;
     }
 
-    const newBorrowing = await db.insert(borrowings).values({
-        studentId, assetId, quantity: borrowQty,
-        borrowDate: borrowDate ? new Date(borrowDate) : new Date(),
-        returnDate: new Date(returnDate), 
-        status: 'borrowed',
-      }).returning();
+    //  3. สร้างรหัสรายการ (Transaction ID) 
+    const randomDigits = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+    const transactionId = `ENTrent${randomDigits}`;
+    const borrowedRecords = [];
 
-    const newAvailableQty = currentAsset.availableQuantity - borrowQty;
-    const newStatus = newAvailableQty === 0 ? 'unavailable' : 'available';
+    //  4. ลูปทำรายการพัสดุทีละชิ้นตามที่ส่งมาในตะกร้า (items)
+    for (const item of items) {
+      const { assetId, quantity } = item;
+      const borrowQty = Number(quantity);
 
-    await db.update(assets).set({ availableQuantity: newAvailableQty, status: newStatus }).where(eq(assets.id, assetId));
+      // เช็คว่าพัสดุมีในระบบไหม และสต็อกพอไหม
+      const targetAsset = await db.select().from(assets).where(eq(assets.id, assetId));
+      if (targetAsset.length === 0) {
+        return res.status(404).json({ error: `Asset ID ${assetId} not found` });
+      }
 
-    res.status(201).json({ message: 'Borrowing successful', borrowing: newBorrowing[0] });
+      const currentAsset = targetAsset[0];
+      if (currentAsset.availableQuantity < borrowQty) {
+        return res.status(400).json({ 
+          error: `Not enough assets for ${currentAsset.name}. Requested: ${borrowQty}, Available: ${currentAsset.availableQuantity}` 
+        });
+      }
+
+      // บันทึกประวัติการยืม (ใส่ transactionId, projectName, pickupDate เข้าไปด้วย)
+      const newBorrowing = await db.insert(borrowings).values({
+          transactionId,
+          projectName,
+          pickupDate: new Date(pickupDate),
+          studentId, 
+          assetId, 
+          quantity: borrowQty,
+          borrowDate: new Date(), // ออก ณ (เวลาที่กดทำรายการ)
+          returnDate: new Date(returnDate), 
+          status: 'borrowed',
+        }).returning();
+
+      borrowedRecords.push(newBorrowing[0]);
+
+      // ตัดสต็อกพัสดุ
+      const newAvailableQty = currentAsset.availableQuantity - borrowQty;
+      const newStatus = newAvailableQty === 0 ? 'unavailable' : 'available';
+      await db.update(assets).set({ availableQuantity: newAvailableQty, status: newStatus }).where(eq(assets.id, assetId));
+    }
+
+    //  5. ส่งรหัส transactionId และข้อมูลกลับไปให้หน้าบ้านทำใบเสร็จ + QR Code
+    res.status(201).json({ 
+      message: 'Borrowing successful', 
+      transactionId: transactionId,
+      borrowings: borrowedRecords 
+    });
+
   } catch (error) {
+    console.error(" Borrow Error:", error);
     res.status(500).json({ error: 'Failed to process borrowing' });
   }
 });
@@ -213,7 +254,7 @@ router.get('/borrowings', async (req, res) => {
 });
 
 // ==========================================
-// 📰 5. NEWS SYSTEM (ข่าวประชาสัมพันธ์)
+//  5. NEWS SYSTEM (ข่าวประชาสัมพันธ์)
 // ==========================================
 router.get('/news', async (req, res) => {
   try {
@@ -246,7 +287,7 @@ router.delete('/news/:id', async (req, res) => {
 });
 
 // ==========================================
-// 🖼️ 6. BANNERS SYSTEM (แบนเนอร์สไลด์รูป)
+//  6. BANNERS SYSTEM (แบนเนอร์สไลด์รูป)
 // ==========================================
 router.get('/banners', async (req, res) => {
   try {
@@ -293,7 +334,7 @@ router.delete('/banners/:id', async (req, res) => {
 });
 
 // ==========================================
-// ⚙️ 7. SITE SETTINGS (ตั้งค่าเว็บ เช่น นับถอยหลัง)
+//  7. SITE SETTINGS (ตั้งค่าเว็บ เช่น นับถอยหลัง)
 // ==========================================
 router.get('/settings', async (req, res) => {
   try {
@@ -318,6 +359,162 @@ router.post('/settings', async (req, res) => {
     res.status(200).json(upsertedSetting[0]);
   } catch (error) {
     res.status(500).json({ error: 'Failed to save setting' });
+  }
+});
+
+
+// ==========================================
+// 👤 8. USER PROFILE SYSTEM (จัดการข้อมูลส่วนตัว)
+// ==========================================
+
+// 1. API สำหรับเช็คว่านักศึกษาคนนี้กรอกข้อมูลหรือยัง (คุณไอซ์จะใช้เส้นนี้ตอนล็อกอินเสร็จ)
+router.get('/profile/:studentId', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    
+    // ค้นหาข้อมูล profile จาก studentId
+    const profile = await db.select().from(userProfiles).where(eq(userProfiles.studentId, studentId));
+    
+    // ถ้ายังไม่เคยกรอกข้อมูล จะส่ง false ไปบอกหน้าบ้าน
+    if (profile.length === 0) {
+      return res.status(200).json({ hasProfile: false, message: 'Profile not found, please fill in your details.' });
+    }
+    
+    // ถ้าเคยกรอกแล้ว ส่ง true พร้อมข้อมูลเดิมไปให้
+    res.status(200).json({ hasProfile: true, profile: profile[0] });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// 2. API สำหรับบันทึกหรืออัปเดตข้อมูลส่วนตัว (คุณไอซ์จะยิงเส้นนี้ตอนนักศึกษากด Submit ฟอร์ม)
+router.post('/profile', async (req, res) => {
+  try {
+    const { 
+      studentId, nickname, hasShopShirt, major, height, 
+      medicalCondition, drugAllergies, foodAllergies, 
+      contactChannel, phoneNumber 
+    } = req.body;
+
+    // เช็คว่าส่งข้อมูลจำเป็นมาครบไหม (พวกช่องที่ห้ามว่าง)
+    if (!studentId || !nickname || hasShopShirt === undefined || !major || !height || !contactChannel || !phoneNumber) {
+      return res.status(400).json({ error: 'Missing required fields. Please fill in all mandatory information.' });
+    }
+
+    // ใช้คำสั่ง Upsert (ถ้าไม่มีให้ Insert, ถ้ามีแล้วให้ Update)
+    const upsertedProfile = await db.insert(userProfiles)
+      .values({
+        studentId, nickname, hasShopShirt, major, height, 
+        medicalCondition: medicalCondition || null, 
+        drugAllergies: drugAllergies || null, 
+        foodAllergies: foodAllergies || null, 
+        contactChannel, phoneNumber
+      })
+      .onConflictDoUpdate({
+        target: userProfiles.studentId, // ถ้า studentId ซ้ำ ให้ทำการอัปเดตข้อมูลแทน
+        set: { 
+          nickname, hasShopShirt, major, height, 
+          medicalCondition: medicalCondition || null, 
+          drugAllergies: drugAllergies || null, 
+          foodAllergies: foodAllergies || null, 
+          contactChannel, phoneNumber, 
+          updatedAt: new Date() 
+        }
+      })
+      .returning();
+
+    res.status(200).json({ 
+      message: 'Profile saved successfully', 
+      profile: upsertedProfile[0] 
+    });
+
+  } catch (error) {
+    console.error(" Profile Save Error:", error);
+    res.status(500).json({ error: 'Failed to save profile' });
+  }
+});
+
+// ==========================================
+//  9. RECRUITMENT SYSTEM (ระบบรับสมัครสตาฟ)
+// ==========================================
+
+// 1. API สำหรับกดสมัครกิจกรรม (จะเช็คประวัติก่อน)
+router.post('/events/apply', async (req, res) => {
+  try {
+    const { eventId, roleId, studentId } = req.body;
+
+    //  เช็คว่ามีประวัติใน userProfiles หรือยัง
+    const profile = await db.select().from(userProfiles).where(eq(userProfiles.studentId, studentId));
+    
+    if (profile.length === 0) {
+      // ถ้ายังไม่มี ส่ง status 403 กลับไปบอกคุณไอซ์ (Frontend) ให้เด้งไปหน้าฟอร์มกรอกข้อมูล
+      return res.status(403).json({ 
+        requiresProfile: true, 
+        message: 'กรุณากรอกข้อมูลส่วนตัวให้ครบถ้วนก่อนทำการสมัครกิจกรรมครับ' 
+      });
+    }
+
+    // ถ้ามีประวัติแล้ว ให้บันทึกการสมัครลงตาราง applications
+    const newApplication = await db.insert(applications).values({
+      eventId,
+      roleId,
+      studentId,
+      status: 'pending' // ค่าเริ่มต้นคือรอแอดมินอนุมัติ
+    }).returning();
+
+    res.status(201).json({ 
+      message: 'สมัครกิจกรรมสำเร็จ', 
+      application: newApplication[0] 
+    });
+
+  } catch (error) {
+    console.error(" Fetch Applicants Error:", error);
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการสมัครกิจกรรม' });
+  }
+});
+// 2. API สำหรับให้แอดมินดูรายชื่อคนสมัคร พร้อมประวัติสุขภาพและข้อมูลส่วนตัว
+router.get('/events/:eventId/applications', async (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+
+    // ทำการ JOIN 4 ตารางเข้าด้วยกัน
+    const applicantsList = await db
+      .select({
+        applicationId: applications.id,
+        status: applications.status,
+        appliedAt: applications.appliedAt,
+        
+        // ข้อมูลจากตาราง users (ข้อมูลพื้นฐาน)
+        studentId: users.studentId,
+        fullName: users.fullName,
+        
+        // ข้อมูลจากตาราง eventRoles (ตำแหน่งที่สมัคร)
+        roleName: eventRoles.roleName,
+        
+        //  ข้อมูลจากตาราง userProfiles (ข้อมูลสุขภาพและข้อมูลเชิงลึกที่แอดมินต้องรู้)
+        nickname: userProfiles.nickname,
+        major: userProfiles.major,
+        hasShopShirt: userProfiles.hasShopShirt,
+        medicalCondition: userProfiles.medicalCondition,
+        drugAllergies: userProfiles.drugAllergies,
+        foodAllergies: userProfiles.foodAllergies,
+        phoneNumber: userProfiles.phoneNumber
+      })
+      .from(applications)
+      // สะพานที่ 1: เชื่อมใบสมัคร กับ ข้อมูลผู้ใช้หลัก
+      .innerJoin(users, eq(applications.studentId, users.studentId))
+      // สะพานที่ 2: เชื่อมผู้ใช้หลัก กับ ประวัติสุขภาพ (userProfiles)
+      .innerJoin(userProfiles, eq(users.studentId, userProfiles.studentId))
+      // สะพานที่ 3: เชื่อมใบสมัคร กับ ตำแหน่ง (เพื่อให้รู้ว่าสมัครฝ่ายไหน)
+      .innerJoin(eventRoles, eq(applications.roleId, eventRoles.id))
+      .where(eq(applications.eventId, eventId));
+
+    // ส่งข้อมูลที่ประกอบร่างแล้วกลับไปให้หน้าบ้านแสดงเป็นตาราง
+    res.status(200).json(applicantsList);
+
+  } catch (error) {
+    console.error(" Fetch Applicants Error:", error);
+    res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลผู้สมัครได้' });
   }
 });
 
