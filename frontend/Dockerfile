@@ -2,7 +2,9 @@
 FROM node:22-alpine as builder
 WORKDIR /app
 COPY package.json ./
-RUN npm install
+RUN npm install -g npm@latest && \
+    rm -rf package-lock.json node_modules && \
+    npm install --no-package-lock
 COPY . .
 RUN npm run build
 

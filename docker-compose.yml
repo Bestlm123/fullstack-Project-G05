@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password123
-      POSTGRES_DB: preflight_db
+      POSTGRES_DB: project_G05
     ports:
       - "5432:5432"
     volumes:
@@ -22,7 +22,7 @@ services:
       - ./backend/.env
     environment:
       # เขียนทับเฉพาะ DATABASE_URL ให้ชี้ไปหา 'postgres' ใน Docker Network
-      - DATABASE_URL=postgresql://postgres:password123@postgres:5432/preflight_db
+      - DATABASE_URL=postgresql://postgres:password123@postgres:5432/project_G05
     depends_on:
       - postgres
 
