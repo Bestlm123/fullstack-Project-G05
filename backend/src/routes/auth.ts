@@ -75,12 +75,12 @@ const cmuStrategy = new OAuth2Strategy({
       // ✅ FIX: ดึงรหัส 9 หลักจาก basic_info.student_id โดยตรง
       const studentId = basicInfo.student_id || studentEmail.split('@')[0];
       
-      // ✅ FIX: ดึงชื่อ-นามสกุลภาษาไทยจาก basic_info
+      // ✅ FIX: ดึงชื่อ-นามสกุลภาษาอังกฤษจาก basic_info
       const fullName = basicInfo.firstname_TH 
-        ? `${basicInfo.firstname_TH} ${basicInfo.lastname_TH}` 
+        ? `${basicInfo.firstname_EN} ${basicInfo.lastname_EN}` 
         : (decodedInfo.name || "Unknown");
 
-      const finalFaculty = getFacultyFromStudentId(studentId);
+      const finalFaculty = basicInfo.organization_name_EN || getFacultyFromStudentId(studentId);
 
       const loggedInUser = await db.insert(users)
         .values({
