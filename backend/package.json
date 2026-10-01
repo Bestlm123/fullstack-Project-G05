@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon",
+    "dev": "cross-env CLIENT_ID=mock CLIENT_SECRET=mock CALLBACK_URL=http://localhost:3000/api/auth/callback nodemon --exec \"tsx ./src/index.ts\"",
     "build": "tsc && tsc-alias",
     "start": "node ./dist/src/index.js",
     "test": "vitest",

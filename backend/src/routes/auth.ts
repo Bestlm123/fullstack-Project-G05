@@ -48,14 +48,14 @@ passport.deserializeUser(async (studentId: string, done) => {
 });
 
 // ==========================================
-// 3. CMU OAuth Strategy (ป้องกันค่า undefined)
+// 3. CMU OAuth Strategy
 // ==========================================
-passport.use('cmu-oauth', new OAuth2Strategy({
+const cmuStrategy = new OAuth2Strategy({
     authorizationURL: 'https://oauth497.cpecmu.com/application/o/authorize/',
     tokenURL: 'https://oauth497.cpecmu.com/application/o/token/',
     clientID: process.env.CMU_OAUTH_CLIENT_ID || '',
     clientSecret: process.env.CMU_OAUTH_CLIENT_SECRET || '',
-    callbackURL: process.env.CMU_OAUTH_CALLBACK_URL || 'http://localhost:3001/api/auth/callback',
+    callbackURL: process.env.CMU_OAUTH_CALLBACK_URL || 'http://localhost:8000/api/auth/callback',
   },
   async (accessToken: string, refreshToken: string, results: any, profile: any, done: any) => {
     try {
@@ -65,8 +65,12 @@ passport.use('cmu-oauth', new OAuth2Strategy({
       }
       
       const decodedInfo: any = jwt.decode(idToken); 
+      console.log("🔍 CMU OAuth Payload:", decodedInfo); // ดูข้อมูลที่มหาลัยส่งมา
+
       const studentEmail = decodedInfo.email; 
-      const studentId = studentEmail.split('@')[0];
+      
+      // ✅ FIX: ดึงรหัส 9 หลักจาก Payload ของมหาลัยตรงๆ
+      const studentId = decodedInfo.student_id || decodedInfo.cmuitaccount || studentEmail.split('@')[0];
       const fullName = decodedInfo.name || "Unknown";
       const finalFaculty = getFacultyFromStudentId(studentId);
 
@@ -85,13 +89,23 @@ passport.use('cmu-oauth', new OAuth2Strategy({
       return done(err);
     }
   }
-));
+);
+
+// 🌟 FIX: บังคับให้ Passport ยัด Client ID และ Secret ลงไปใน Body ตอนแลก Token
+cmuStrategy.tokenParams = function() {
+  return {
+    client_id: process.env.CMU_OAUTH_CLIENT_ID || '',
+    client_secret: process.env.CMU_OAUTH_CLIENT_SECRET || ''
+  };
+};
+
+passport.use('cmu-oauth', cmuStrategy);
 
 // ==========================================
 // 4. Routes ต่างๆ
 // ==========================================
 
-// Route 1: เอาไว้เทสต์ยิง Postman
+// Route 1: เอาไว้เทสต์ยิง Postman หรือ Dev Login
 router.post('/login', async (req, res) => {
   try {
     const { studentId, email, fullName, faculty, role } = req.body;
@@ -145,6 +159,16 @@ router.post('/logout', (req, res, next) => {
       res.status(200).json({ message: 'Logged out successfully' });
     });
   });
+});
+
+// 🛠️ Route ชั่วคราวสำหรับเคลียร์ข้อมูลเก่าที่ชนกัน
+router.get('/clear-my-user', async (req, res) => {
+  try {
+    await db.delete(users).where(eq(users.email, 'thittawin_khongna@cmu.ac.th'));
+    res.send("✅ เคลียร์ข้อมูลเก่าสำเร็จ! ปิดหน้านี้แล้วกลับไปกด Login ใหม่ที่หน้าเว็บได้เลยครับ");
+  } catch (err) {
+    res.status(500).send("มีบางอย่างผิดพลาด: " + err);
+  }
 });
 
 export default router;
