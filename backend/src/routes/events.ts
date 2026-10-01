@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../../db/index.js';
-import { events, eventRoles, applications, users } from '../../db/schema.js';
+import { events, eventRoles, applications, users, userProfiles } from '../../db/schema.js';
 import { eq, and } from 'drizzle-orm'; //  อย่าลืม import 'and' เพิ่มเข้ามาด้วยนะ
 
 const router = Router();
@@ -12,6 +12,22 @@ router.post('/apply', async (req, res) => {
   try {
     // รับข้อมูลจากหน้าเว็บ (ตอนนี้เรายังไม่มีระบบ Login เลยให้ส่ง studentId มาตรงๆ ก่อน)
     const { studentId, eventId, roleId } = req.body;
+
+    // 1. เช็คว่าส่งข้อมูลมาครบไหม
+    if (!studentId || !eventId || !roleId) {
+      return res.status(400).json({ error: 'studentId, eventId, and roleId are required' });
+    }
+
+    //  ด่านที่ 0: เช็คว่านักศึกษาคนนี้เคยกรอกประวัติ (userProfiles) หรือยัง?
+    const profile = await db.select().from(userProfiles).where(eq(userProfiles.studentId, studentId));
+    
+    if (profile.length === 0) {
+      // ถ้ายังไม่มี ส่ง status 403 กลับไปบอกหน้าบ้านให้เด้งไปหน้าฟอร์มกรอกข้อมูล
+      return res.status(403).json({ 
+        requiresProfile: true, 
+        message: 'กรุณากรอกข้อมูลส่วนตัว (เช่น โรคประจำตัว, อาหารที่แพ้) ให้ครบถ้วนก่อนทำการสมัครกิจกรรมครับ' 
+      });
+    }
 
     // 1. เช็คว่าส่งข้อมูลมาครบไหม
     if (!studentId || !eventId || !roleId) {
