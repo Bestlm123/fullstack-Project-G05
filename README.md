@@ -62,7 +62,16 @@ SESSION_SECRET=<your-session-secret>
 
 ---
 
-### 1.3 Update Database Schema
+### 1.3 Start Database with Docker
+
+สำหรับผู้ที่ใช้ Docker ในการรัน PostgreSQL Database ให้ทำการเปิด Container ก่อนการอัปเดต Schema
+
+```bash
+docker compose up -d
+```
+---
+
+### 1.4 Update Database Schema
 
 รันคำสั่ง Migration / Schema Push:
 
@@ -88,7 +97,7 @@ No
 
 ---
 
-### 1.4 Start Backend Server
+### 1.5 Start Backend Server
 
 รัน:
 
