@@ -18,18 +18,18 @@ console.log("🔍 [Auth.ts] CLIENT_ID:", process.env.CMU_OAUTH_CLIENT_ID ? "Load
 console.log("🔍 [Auth.ts] CALLBACK_URL:", process.env.CMU_OAUTH_CALLBACK_URL);
 console.log("----------------------------------------");
 
-// ==========================================
-// 1. ตั้งค่า Session สำหรับจำสถานะการ Login
-// ==========================================
-router.use(session({
-  secret: process.env.SESSION_SECRET || 'admin123',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 }
-}));
+// // ==========================================
+// // 1. ตั้งค่า Session สำหรับจำสถานะการ Login
+// // ==========================================
+// router.use(session({
+//   secret: process.env.SESSION_SECRET || 'admin123',
+//   resave: false,
+//   saveUninitialized: false,
+//   cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 }
+// }));
 
-router.use(passport.initialize());
-router.use(passport.session());
+// router.use(passport.initialize());
+// router.use(passport.session());
 
 // ==========================================
 // 2. ตั้งค่า Serialize / Deserialize User
@@ -77,10 +77,10 @@ const cmuStrategy = new OAuth2Strategy({
       
       // ✅ FIX: ดึงชื่อ-นามสกุลภาษาไทยจาก basic_info
       const fullName = basicInfo.firstname_TH 
-        ? `${basicInfo.firstname_TH} ${basicInfo.lastname_TH}` 
+        ? `${basicInfo.firstname_EN} ${basicInfo.lastname_EN}` 
         : (decodedInfo.name || "Unknown");
 
-      const finalFaculty = getFacultyFromStudentId(studentId);
+      const finalFaculty = basicInfo.organization_name_EN || getFacultyFromStudentId(studentId);
 
       const loggedInUser = await db.insert(users)
         .values({
@@ -114,6 +114,7 @@ passport.use('cmu-oauth', cmuStrategy);
 // ==========================================
 
 // Route 1: เอาไว้เทสต์ยิง Postman หรือ Dev Login
+// Route 1: เอาไว้เทสต์ยิง Postman หรือ Dev Login
 router.post('/login', async (req, res) => {
   try {
     const { studentId, email, fullName, faculty, role } = req.body;
@@ -126,11 +127,27 @@ router.post('/login', async (req, res) => {
       .values({ studentId, fullName, email: email || null, faculty: finalFaculty, role: role || 'user' })
       .onConflictDoUpdate({
         target: users.studentId, 
-        set: { fullName, email: email || null, faculty: finalFaculty }
+        set: { fullName, email: email || null, faculty: finalFaculty, role: role || 'user' }
       })
       .returning();
 
-    res.status(200).json({ message: 'Login / Register successful', user: loggedInUser[0] });
+    // 🌟 FIX: บังคับให้ req.session.save() ทำงานให้เสร็จก่อนส่งสถานะ 200 กลับไป
+    (req as any).login(loggedInUser[0], (err: any) => {
+      if (err) {
+        console.error("Session Error:", err);
+        return res.status(500).json({ error: 'Failed to create session' });
+      }
+      
+      // บังคับเซฟ Session ลง Memory ให้เสร็จ
+      (req as any).session.save((saveErr: any) => {
+        if (saveErr) {
+            console.error("Session Save Error:", saveErr);
+            return res.status(500).json({ error: 'Failed to save session' });
+        }
+        return res.status(200).json({ message: 'Login / Register successful', user: loggedInUser[0] });
+      });
+    });
+
   } catch (error) {
     console.error("Login Error:", error);
     res.status(500).json({ error: 'Failed to process login' });

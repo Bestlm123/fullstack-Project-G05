@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-// นำเข้าไฟล์ Routes ย่อยที่เราเพิ่งสร้าง
+// นำเข้าไฟล์ Routes ย่อย
 import authRoutes from './auth.js';
 import profileRoutes from './profiles.js';
 import recruitmentRoutes from './recruitment.js';

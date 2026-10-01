@@ -1,6 +1,5 @@
 import { LayoutDashboard, Package, ClipboardList, LogOut, GraduationCap } from 'lucide-react';
 
-// 1. ระบุโครงสร้าง User ให้เหมือนกับใน App.tsx
 interface User {
   studentId: string;
   fullName: string;
@@ -9,7 +8,6 @@ interface User {
   role: 'admin' | 'user';
 }
 
-// 2. เพิ่ม currentUser และ onLogout เข้าไปใน Props
 interface SidebarProps {
   activeTab: 'home' | 'inventory' | 'history';
   setActiveTab: (tab: 'home' | 'inventory' | 'history') => void;
@@ -29,8 +27,13 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
         <h2 style={{ color: '#8b0000', margin: 0, fontSize: '18px', fontWeight: 'bold' }}>SMO ENT</h2>
       </div>
       
-      {/* เมนูนำทาง */}
-      <nav style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {/* เมนูนำทาง (แบ่งหมวดหมู่) */}
+      <nav style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        
+        {/* กลุ่มที่ 1: เมนูหลัก */}
+        <div style={{ padding: '0 16px', marginTop: '8px', marginBottom: '4px', fontSize: '12px', fontWeight: 'bold', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          เมนูหลัก
+        </div>
         <button 
           onClick={() => setActiveTab('home')}
           style={{ 
@@ -43,6 +46,10 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
           <LayoutDashboard size={20} /> หน้าหลัก
         </button>
         
+        {/* กลุ่มที่ 2: บริการยืม-คืน */}
+        <div style={{ padding: '0 16px', marginTop: '24px', marginBottom: '4px', fontSize: '12px', fontWeight: 'bold', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          บริการยืม-คืน
+        </div>
         <button 
           onClick={() => setActiveTab('inventory')}
           style={{ 
@@ -68,11 +75,10 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
         </button>
       </nav>
 
-      {/* โปรไฟล์ผู้ใช้งานและปุ่มออกจากระบบ (ดึงข้อมูลมาจาก currentUser) */}
+      {/* โปรไฟล์ผู้ใช้งานและปุ่มออกจากระบบ */}
       {currentUser && (
         <div style={{ padding: '24px', borderTop: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            {/* วงกลมรูปโปรไฟล์ (ดักเช็คก่อนว่ามี fullName หรือยัง) */}
             <div style={{ 
               width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#1f2937', 
               color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
@@ -91,7 +97,6 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
             </div>
           </div>
           
-          {/* ปุ่มออกจากระบบ (เรียกใช้ฟังก์ชัน onLogout) */}
           <button 
             onClick={onLogout}
             style={{ 

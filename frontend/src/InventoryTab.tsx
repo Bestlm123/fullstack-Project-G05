@@ -5,8 +5,8 @@ import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
-// ✅ แก้ Port เป็น 8000 ให้ตรงกับ Backend
 const API_URL = 'http://localhost:8000/api';
+axios.defaults.withCredentials = true;
 const localizer = momentLocalizer(moment);
 
 interface InventoryTabProps {
@@ -57,26 +57,25 @@ const CATEGORIES = ['ทั้งหมด', 'ทั่วไป', 'อิเล
 
 export default function InventoryTab({ currentRole, currentUserId }: InventoryTabProps) {
   const [viewState, setViewState] = useState<'catalog' | 'booking' | 'cart' | 'receipt'>('catalog');
-  
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
-  
   const [cart, setCart] = useState<CartItem[]>([]);
-  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [formData, setFormData] = useState({ id: '', name: '', category: 'ทั่วไป', quantity: 1, status: 'available' });
+  
+  // ✅ เพิ่มฟิลด์ imageUrl เข้าไปใน State
+  const [formData, setFormData] = useState({ 
+    id: '', name: '', category: 'ทั่วไป', quantity: 1, status: 'available', imageUrl: '' 
+  });
 
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [borrowEvents, setBorrowEvents] = useState<BorrowEvent[]>([]);
   const [bookingForm, setBookingForm] = useState({ startDate: '', startTime: '08:00', endDate: '', endTime: '16:30', quantity: 1 });
-  
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
   const fetchAssets = useCallback(async () => {
     try {
-      // ✅ เปลี่ยนจาก /items เป็น /assets ให้ตรงกับ DB
-      const res = await axios.get(`${API_URL}/assets`);
+      const res = await axios.get(`${API_URL}/items`);
       setAssets(res.data);
     } catch (error) {
       console.error(error);
@@ -84,15 +83,36 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchAssets();
+    // หุ้มฟังก์ชันด้วย Async ใหม่อีกชั้น เพื่อบังคับให้ State ทำงานแบบ Asynchronous
+    const initFetch = async () => {
+      await fetchAssets();
+    };
+    initFetch();
     
-    const interval = setInterval(() => {
-      fetchAssets();
-    }, 3000);
-    
+    const interval = setInterval(fetchAssets, 3000);
     return () => clearInterval(interval);
   }, [fetchAssets]);
+
+  // ✅ ฟังก์ชันสุ่มรหัสอุปกรณ์อัตโนมัติ ตามหมวดหมู่ที่เลือก
+  const generateAssetId = (category: string, currentAssets: Asset[]) => {
+    const prefixMap: Record<string, string> = {
+      'ทั่วไป': 'GEN',
+      'อิเล็กทรอนิกส์': 'EAV',
+      'เครื่องเขียน/อุปกรณ์จัดงาน': 'EOS',
+      'กีฬา': 'SPR',
+      'อื่นๆ': 'OTH'
+    };
+    const prefix = prefixMap[category] || 'GEN';
+
+    const existingIds = currentAssets
+      .map(a => a.id)
+      .filter(id => id.startsWith(prefix))
+      .map(id => parseInt(id.replace(prefix, ''), 10))
+      .filter(n => !isNaN(n));
+    
+    const nextNumber = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+    return `${prefix}${nextNumber.toString().padStart(3, '0')}`;
+  };
 
   const handleSelectAsset = async (asset: Asset) => {
     setSelectedAsset(asset);
@@ -118,7 +138,6 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
     } catch (error) {
       console.error(error);
     }
-
     setViewState('booking');
   };
 
@@ -137,7 +156,6 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
       alert("ไม่สามารถเลือกวันและเวลายืมย้อนหลังได้ครับ กรุณาระบุเวลาใหม่");
       return;
     }
-
     if (endDateTime <= startDateTime) {
       alert("วันและเวลาคืนอุปกรณ์ ต้องอยู่หลังจากเวลายืมครับ!");
       return;
@@ -168,10 +186,11 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
     if (cart.length === 0) return;
     try {
       await Promise.all(cart.map(item => 
-        // ✅ เปลี่ยนจาก /borrow เป็น /borrowings
+        // 🌟 FIX: เปลี่ยนจาก /borrow เป็น /borrowings เพื่อให้ตรงกับ Backend
         axios.post(`${API_URL}/borrowings`, {
           assetId: item.asset.id,
           studentId: currentUserId,
+          fullName: "ผู้ใช้งานระบบ", 
           quantity: item.quantity,
           borrowDate: item.borrowDate,
           returnDate: item.returnDate
@@ -188,31 +207,57 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
       fetchAssets();
       setViewState('receipt'); 
     } catch (error) {
-      console.error(error);
-      alert('เกิดข้อผิดพลาดในการยืมอุปกรณ์');
+      console.error("Checkout Error:", error);
+      
+      let errorMessage = 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ';
+      
+      if (axios.isAxiosError(error)) {
+        errorMessage = error.response?.data?.error || error.response?.data?.message || error.message;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      alert(`ยืมไม่สำเร็จ สาเหตุ: ${errorMessage}\n\n(ลองกด F12 ดูแถบ Console หรือดูในหน้าจอ Terminal ของ Backend)`);
     }
-  };
+  }; // ✅ เพิ่มวงเล็บปีกกาปิดฟังก์ชันตรงนี้ให้แล้ว
 
   const handleOpenAddModal = () => {
     setIsEditMode(false);
-    setFormData({ id: '', name: '', category: 'ทั่วไป', quantity: 1, status: 'available' });
+    const initialCategory = 'ทั่วไป';
+    const autoId = generateAssetId(initialCategory, assets);
+    setFormData({ id: autoId, name: '', category: initialCategory, quantity: 1, status: 'available', imageUrl: '' });
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (asset: Asset) => {
     setIsEditMode(true);
-    setFormData({ id: asset.id, name: asset.name, category: asset.category, quantity: asset.quantity, status: asset.status });
+    setFormData({ id: asset.id, name: asset.name, category: asset.category, quantity: asset.quantity, status: asset.status, imageUrl: asset.imageUrl || '' });
     setIsModalOpen(true);
+  };
+
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCategory = e.target.value;
+    if (!isEditMode) {
+      const newId = generateAssetId(newCategory, assets);
+      setFormData({ ...formData, category: newCategory, id: newId });
+    } else {
+      setFormData({ ...formData, category: newCategory });
+    }
   };
 
   const handleSaveAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...formData,
+        availableQuantity: formData.quantity, 
+      };
+
       if (isEditMode) {
-        await axios.put(`${API_URL}/assets/${formData.id}`, formData);
+        await axios.put(`${API_URL}/items/${formData.id}`, payload);
         alert('อัปเดตข้อมูลสำเร็จ!');
       } else {
-        await axios.post(`${API_URL}/assets`, formData);
+        await axios.post(`${API_URL}/items`, payload);
         alert('เพิ่มอุปกรณ์สำเร็จ!');
       }
       setIsModalOpen(false);
@@ -226,7 +271,7 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
   const handleDelete = async (id: string) => {
     if (confirm('ยืนยันการลบอุปกรณ์นี้?')) {
       try {
-        await axios.delete(`${API_URL}/assets/${id}`);
+        await axios.delete(`${API_URL}/items/${id}`);
         fetchAssets();
       } catch (error) {
         console.error(error);
@@ -485,24 +530,30 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
               <h3>{isEditMode ? '✏️ แก้ไขอุปกรณ์' : '📦 เพิ่มอุปกรณ์ใหม่'}</h3>
               <button className="btn-close" onClick={() => setIsModalOpen(false)}><X size={20} /></button>
             </div>
+            
+            {/* ✅ อัปเดตฟอร์ม Modal: ช่อง ID อ่านอย่างเดียว, ดักการเปลี่ยนหมวดหมู่, ใส่รูปลิงก์ */}
             <form className="modal-form" onSubmit={handleSaveAsset}>
               <div className="form-field">
                 <label>รหัสอุปกรณ์ (ID) *</label>
-                <input required type="text" maxLength={10} className="form-input" value={formData.id} onChange={e => setFormData({...formData, id: e.target.value})} disabled={isEditMode} style={{ backgroundColor: isEditMode ? '#f3f4f6' : 'white' }} />
+                <input required type="text" className="form-input" value={formData.id} readOnly style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed', color: '#6b7280', fontWeight: 'bold' }} />
               </div>
               <div className="form-field">
                 <label>ชื่ออุปกรณ์ *</label>
-                <input required type="text" className="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <input required type="text" className="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="เช่น โต๊ะพับ, ไมโครโฟน" />
               </div>
               <div className="form-field">
                 <label>หมวดหมู่</label>
-                <select className="form-input" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                <select className="form-input" value={formData.category} onChange={handleCategoryChange}>
                   <option value="ทั่วไป">ทั่วไป (General)</option>
                   <option value="อิเล็กทรอนิกส์">อิเล็กทรอนิกส์ (Electronics)</option>
                   <option value="เครื่องเขียน/อุปกรณ์จัดงาน">เครื่องเขียน/อุปกรณ์จัดงาน (Event Supplies)</option>
                   <option value="กีฬา">กีฬา (Sports)</option>
                   <option value="อื่นๆ">อื่นๆ (Others)</option>
                 </select>
+              </div>
+              <div className="form-field">
+                <label>ลิงก์รูปภาพ (Image URL)</label>
+                <input type="text" className="form-input" value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} placeholder="https://example.com/image.jpg (เว้นว่างได้)" />
               </div>
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div className="form-field" style={{ flex: 1 }}>
@@ -525,7 +576,6 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
           </div>
         </div>
       )}
-
     </div>
   );
 }

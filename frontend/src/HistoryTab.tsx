@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Clock, CheckCircle, QrCode, X } from 'lucide-react';
+import { Clock, QrCode, X, ScanLine } from 'lucide-react'; // 🌟 เอา CheckCircle ที่ไม่ได้ใช้ออกแล้ว
 
-// ✅ แก้ Port เป็น 8000
 const API_URL = 'http://localhost:8000/api';
+axios.defaults.withCredentials = true;
 
 interface HistoryTabProps {
   currentRole: 'admin' | 'user';
@@ -36,8 +36,7 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
     try {
       const [borrowRes, itemRes] = await Promise.all([
         axios.get(`${API_URL}/borrowings`),
-        // ✅ เปลี่ยนจาก /items เป็น /assets
-        axios.get(`${API_URL}/assets`)
+        axios.get(`${API_URL}/items`)
       ]);
       
       setAssets(itemRes.data);
@@ -71,16 +70,36 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
     return new Date(dateStr).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
   };
 
-  const handleReturnItem = async (borrowingId: number) => {
-    if (confirm('ยืนยันการรับคืนอุปกรณ์ชิ้นนี้?')) {
+  const handleAdminScan = async (recordId: number, studentId: string) => {
+    const mockQrData = `REQ-${recordId.toString().padStart(4, '0')}|${studentId}`;
+    
+    if (confirm(`คุณกำลังสแกน QR Code: ${mockQrData}\nยืนยันการทำรายการ (รับของ/คืนของ)?`)) {
       try {
-        await axios.post(`${API_URL}/return`, { borrowingId });
-        alert('รับคืนอุปกรณ์สำเร็จ!');
+        const response = await axios.post(`${API_URL}/borrowings/scan`, { qrData: mockQrData });
+        alert(`✅ ${response.data.message}`);
         fetchData();
-      } catch (error) {
-        console.error(error);
-        alert('เกิดข้อผิดพลาดในการรับคืน');
+      } catch (error) { // 🌟 เอา : any ออก
+        let errMsg = 'เกิดข้อผิดพลาดในการสแกน';
+        
+        // 🌟 เช็ค Error แบบถูกหลัก TypeScript
+        if (axios.isAxiosError(error)) {
+          errMsg = error.response?.data?.error || error.response?.data?.message || error.message;
+        } else if (error instanceof Error) {
+          errMsg = error.message;
+        }
+        
+        alert(`❌ ${errMsg}`);
       }
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    if (status === 'pending') {
+      return { text: 'รอรับของ', bg: '#e0f2fe', color: '#0369a1' };
+    } else if (status === 'borrowed') {
+      return { text: 'กำลังยืม', bg: '#fef3c7', color: '#b45309' };
+    } else {
+      return { text: 'คืนแล้ว', bg: '#f3f4f6', color: '#6b7280' };
     }
   };
 
@@ -105,11 +124,12 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
           </thead>
           <tbody>
             {borrowings.length === 0 ? (
-              <tr><td colSpan={5} className="empty-state">คุณยังไม่มีประวัติการยืมอุปกรณ์</td></tr>
+              <tr><td colSpan={5} className="empty-state" style={{ textAlign: 'center', padding: '40px' }}>คุณยังไม่มีประวัติการยืมอุปกรณ์</td></tr>
             ) : (
               borrowings.map((record) => {
                 const asset = getAssetDetails(record.assetId);
                 const isReturned = record.status === 'returned';
+                const badge = getStatusBadge(record.status);
 
                 return (
                   <tr key={record.id} style={{ opacity: isReturned ? 0.6 : 1 }}>
@@ -125,10 +145,9 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
                     <td className="text-center">
                       <span style={{ 
                         fontSize: '12px', padding: '6px 12px', borderRadius: '9999px', fontWeight: '600', 
-                        backgroundColor: isReturned ? '#f3f4f6' : '#fef3c7', 
-                        color: isReturned ? '#6b7280' : '#b45309' 
+                        backgroundColor: badge.bg, color: badge.color
                       }}>
-                        {isReturned ? 'คืนแล้ว' : 'กำลังยืม'}
+                        {badge.text}
                       </span>
                     </td>
                     <td className="text-center">
@@ -137,18 +156,21 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
                           onClick={() => setSelectedQr(`REQ-${record.id.toString().padStart(4, '0')}|${record.studentId}`)}
                           style={{ background: 'none', border: '1px solid #d1d5db', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}
                         >
-                          <QrCode size={16} /> โชว์ QR Code
+                          <QrCode size={16} /> โชว์ QR
                         </button>
                       )}
+                      
                       {currentRole === 'admin' && !isReturned && (
                         <button 
                           className="btn-primary"
-                          onClick={() => handleReturnItem(record.id)}
-                          style={{ padding: '6px 12px', fontSize: '14px' }}
+                          onClick={() => handleAdminScan(record.id, record.studentId)}
+                          style={{ padding: '6px 12px', fontSize: '14px', backgroundColor: record.status === 'pending' ? '#2563eb' : '#059669' }}
                         >
-                          <CheckCircle size={16} style={{ display: 'inline', marginRight: '4px' }}/> รับคืน
+                          <ScanLine size={16} style={{ display: 'inline', marginRight: '4px' }}/> 
+                          {record.status === 'pending' ? 'แสกนรับของ' : 'แสกนคืนของ'}
                         </button>
                       )}
+                      
                       {isReturned && (
                         <span style={{ color: '#6b7280', fontSize: '14px' }}>เสร็จสิ้น</span>
                       )}
@@ -168,8 +190,8 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
               <button className="btn-close" onClick={() => setSelectedQr(null)}><X size={20} /></button>
             </div>
             
-            <h3 style={{ marginTop: 0 }}>สแกนเพื่อยืนยันการรับของ</h3>
-            <p style={{ color: '#6b7280', marginBottom: '24px' }}>โปรดแสดง QR Code นี้แก่เจ้าหน้าที่</p>
+            <h3 style={{ marginTop: 0 }}>สแกนเพื่อยืนยันการรับ/คืน</h3>
+            <p style={{ color: '#6b7280', marginBottom: '24px' }}>โปรดแสดง QR Code นี้แก่เจ้าหน้าที่สโมสรฯ</p>
             
             <div style={{ background: 'white', padding: '24px', borderRadius: '16px', display: 'inline-block', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
               <QRCodeCanvas 
@@ -178,17 +200,13 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
                 level={"H"}
                 imageSettings={{
                   src: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Eq_it-na_pizza-margherita_sep2005_sml.jpg/120px-Eq_it-na_pizza-margherita_sep2005_sml.jpg",
-                  x: undefined,
-                  y: undefined,
-                  height: 40,
-                  width: 40,
-                  excavate: true,
+                  x: undefined, y: undefined, height: 40, width: 40, excavate: true,
                 }}
               />
             </div>
             
             <div style={{ marginTop: '24px', fontSize: '18px', fontWeight: 'bold', color: '#111827' }}>
-              รหัส: {selectedQr.split('|')[0]}
+              รหัสบิล: {selectedQr.split('|')[0]}
             </div>
           </div>
         </div>
