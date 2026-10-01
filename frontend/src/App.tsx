@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage';
 import InventoryTab from './InventoryTab';
 import HistoryTab from './HistoryTab';
 import './index.css';
+axios.defaults.withCredentials = true; // บังคับแนบคุกกี้ไปกับทุก API ในโปรเจกต์
 
 const FacebookIcon = ({ size = 20, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
@@ -23,6 +24,18 @@ interface User {
   email: string;
   role: 'admin' | 'user';
 }
+<button 
+  onClick={() => {
+    localStorage.clear();
+    window.location.reload();
+  }}
+  style={{ 
+    padding: '10px 20px', backgroundColor: '#ef4444', color: 'white', 
+    position: 'fixed', top: 20, right: 20, zIndex: 9999, borderRadius: '8px'
+  }}
+>
+  🚨 ฉุกเฉิน: ล้างข้อมูล & รีเซ็ต
+</button>
 
 function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'inventory' | 'history'>('home');
@@ -52,13 +65,15 @@ function App() {
         }
       } catch {
         console.log("ยังไม่ได้ล็อกอิน หรือ Session หมดอายุ");
+        // 🌟 FIX: ถ้า Backend บอกว่าไม่ได้ล็อกอิน ให้ล้างข้อมูลทิ้งเพื่อให้กลับไปหน้า Login
+        setCurrentUser(null);
+        localStorage.removeItem('currentUser');
       }
     };
 
-    if (!currentUser) {
-      fetchUserData();
-    }
-  }, [currentUser]);
+    // 🌟 FIX: สั่งให้ตรวจสอบกับ Backend เสมอเมื่อโหลดแอป (เอา if (!currentUser) ออก)
+    fetchUserData();
+  }, []); // 👈 ใส่เป็น Dependency ว่างเปล่า [] เพื่อให้รันแค่ตอนเปิดเว็บครั้งแรก
 
   const handleLoginCMU = () => {
     window.location.href = 'http://localhost:8000/api/auth/login/cmu';
