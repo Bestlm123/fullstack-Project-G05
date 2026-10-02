@@ -4,6 +4,7 @@ import { Calendar, ArrowRight, Image as ImageIcon, Plus, X, Megaphone, Trash2, E
 import './HomePage.css';
 
 const API_URL = 'http://localhost:8000/api'; 
+axios.defaults.withCredentials = true; // 🌟 FIX: บังคับแนบคุกกี้ล็อกอิน เพื่อให้ระบบรู้ว่าเป็น Admin
 
 interface Banner { id: number; imageUrl: string; isActive: boolean; }
 interface NewsItem { id: number; title: string; content: string; createdAt: string; imageUrl?: string; }
@@ -40,7 +41,8 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
 
   const fetchHomePageData = useCallback(async () => {
     try {
-      const bannerRes = await axios.get(`${API_URL}/cms/banners`);
+      // 🌟 FIX: เอา /cms ออก เพื่อให้ตรงกับหลังบ้าน (/api/banners)
+      const bannerRes = await axios.get(`${API_URL}/banners`);
       const activeBanners = bannerRes.data.filter((b: Banner) => b.isActive);
       if (activeBanners.length > 0) {
         setBanners(activeBanners);
@@ -48,11 +50,13 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
         setBanners([{ id: 0, imageUrl: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1200', isActive: true }]);
       }
 
-      const newsRes = await axios.get(`${API_URL}/cms/news`);
+      // 🌟 FIX: เอา /cms ออก (/api/news)
+      const newsRes = await axios.get(`${API_URL}/news`);
       const sortedNews = newsRes.data.sort((a: NewsItem, b: NewsItem) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setNewsList(sortedNews);
 
-      const settingsRes = await axios.get(`${API_URL}/cms/settings`);
+      // 🌟 FIX: เอา /cms ออก (/api/settings)
+      const settingsRes = await axios.get(`${API_URL}/settings`);
       const cdDate = settingsRes.data.find((s: SiteSetting) => s.key === 'countdown_date');
       const cdTitle = settingsRes.data.find((s: SiteSetting) => s.key === 'countdown_title');
       const cdImage = settingsRes.data.find((s: SiteSetting) => s.key === 'countdown_image');
@@ -66,8 +70,10 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchHomePageData();
+    const initFetch = async () => {
+      await fetchHomePageData();
+    };
+    initFetch();
   }, [fetchHomePageData]);
 
   useEffect(() => {
@@ -97,7 +103,8 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
     const url = prompt('ใส่ลิงก์รูปภาพ (URL) เพื่อเพิ่มในสไลด์แบนเนอร์:');
     if (url) {
       try {
-        await axios.post(`${API_URL}/cms/banners`, { imageUrl: url, isActive: true });
+        // 🌟 FIX: เอา /cms ออก
+        await axios.post(`${API_URL}/banners`, { imageUrl: url, isActive: true });
         fetchHomePageData();
       } catch (error) {
         console.error(error);
@@ -114,7 +121,8 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
   const submitNewNews = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/cms/news`, {
+      // 🌟 FIX: เอา /cms ออก
+      await axios.post(`${API_URL}/news`, {
         title: newNewsData.title,
         content: newNewsData.content,
         imageUrl: newNewsData.imageUrl || null, 
@@ -127,7 +135,6 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
       console.error(error);
       let errorMsg = 'เกิดข้อผิดพลาดในการเพิ่มข่าว';
       if (axios.isAxiosError(error)) {
-        // 🌟 ดึง error จาก backend หรือแสดง message กลางๆ แทนการปล่อยให้เป็น undefined
         errorMsg = error.response?.data?.error || error.response?.data?.message || error.message;
       }
       alert(`เพิ่มข่าวไม่สำเร็จ: ${errorMsg}`);
