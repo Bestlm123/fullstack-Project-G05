@@ -5,7 +5,10 @@ import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
-const API_URL = 'http://localhost:8000/api';
+// 🌟 FIX 1: ดึง Base URL จาก Vite Environment
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = `${BASE_URL}/api`;
+
 axios.defaults.withCredentials = true;
 const localizer = momentLocalizer(moment);
 
@@ -55,7 +58,7 @@ interface BorrowingRecord {
 
 const CATEGORIES = ['ทั้งหมด', 'ทั่วไป', 'อิเล็กทรอนิกส์', 'เครื่องเขียน/อุปกรณ์จัดงาน', 'กีฬา', 'อื่นๆ'];
 
-export default function InventoryTab({ currentRole, currentUserId }: InventoryTabProps) {
+export default function InventoryTab({ currentRole }: InventoryTabProps)  {
   const [viewState, setViewState] = useState<'catalog' | 'booking' | 'cart' | 'receipt'>('catalog');
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
@@ -63,7 +66,6 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   
-  // ✅ เพิ่มฟิลด์ imageUrl เข้าไปใน State
   const [formData, setFormData] = useState({ 
     id: '', name: '', category: 'ทั่วไป', quantity: 1, status: 'available', imageUrl: '' 
   });
@@ -83,7 +85,6 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
   }, []);
 
   useEffect(() => {
-    // หุ้มฟังก์ชันด้วย Async ใหม่อีกชั้น เพื่อบังคับให้ State ทำงานแบบ Asynchronous
     const initFetch = async () => {
       await fetchAssets();
     };
@@ -93,7 +94,6 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
     return () => clearInterval(interval);
   }, [fetchAssets]);
 
-  // ✅ ฟังก์ชันสุ่มรหัสอุปกรณ์อัตโนมัติ ตามหมวดหมู่ที่เลือก
   const generateAssetId = (category: string, currentAssets: Asset[]) => {
     const prefixMap: Record<string, string> = {
       'ทั่วไป': 'GEN',
@@ -186,11 +186,9 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
     if (cart.length === 0) return;
     try {
       await Promise.all(cart.map(item => 
-        // 🌟 FIX: เปลี่ยนจาก /borrow เป็น /borrowings เพื่อให้ตรงกับ Backend
+        // 🌟 FIX 2: ป้องกันช่องโหว่ความปลอดภัย โดยไม่ส่ง studentId และ fullName ไปจากหน้าบ้าน
         axios.post(`${API_URL}/borrowings`, {
           assetId: item.asset.id,
-          studentId: currentUserId,
-          fullName: "ผู้ใช้งานระบบ", 
           quantity: item.quantity,
           borrowDate: item.borrowDate,
           returnDate: item.returnDate
@@ -219,7 +217,7 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
       
       alert(`ยืมไม่สำเร็จ สาเหตุ: ${errorMessage}\n\n(ลองกด F12 ดูแถบ Console หรือดูในหน้าจอ Terminal ของ Backend)`);
     }
-  }; // ✅ เพิ่มวงเล็บปีกกาปิดฟังก์ชันตรงนี้ให้แล้ว
+  }; 
 
   const handleOpenAddModal = () => {
     setIsEditMode(false);
@@ -531,7 +529,6 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
               <button className="btn-close" onClick={() => setIsModalOpen(false)}><X size={20} /></button>
             </div>
             
-            {/* ✅ อัปเดตฟอร์ม Modal: ช่อง ID อ่านอย่างเดียว, ดักการเปลี่ยนหมวดหมู่, ใส่รูปลิงก์ */}
             <form className="modal-form" onSubmit={handleSaveAsset}>
               <div className="form-field">
                 <label>รหัสอุปกรณ์ (ID) *</label>

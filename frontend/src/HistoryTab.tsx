@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Clock, QrCode, X, ScanLine } from 'lucide-react'; // 🌟 เอา CheckCircle ที่ไม่ได้ใช้ออกแล้ว
+import { Clock, QrCode, X, ScanLine } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000/api';
+// 🌟 FIX 1: ดึง Base URL จาก Vite Environment ให้ระบบฉลาดขึ้น
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = `${BASE_URL}/api`;
+
 axios.defaults.withCredentials = true;
 
 interface HistoryTabProps {
@@ -36,7 +39,8 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
     try {
       const [borrowRes, itemRes] = await Promise.all([
         axios.get(`${API_URL}/borrowings`),
-        axios.get(`${API_URL}/items`)
+        // 🌟 FIX 2: เปลี่ยนจาก /items เป็น /assets ให้ตรงกับ Backend
+        axios.get(`${API_URL}/assets`)
       ]);
       
       setAssets(itemRes.data);
@@ -78,10 +82,9 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
         const response = await axios.post(`${API_URL}/borrowings/scan`, { qrData: mockQrData });
         alert(`✅ ${response.data.message}`);
         fetchData();
-      } catch (error) { // 🌟 เอา : any ออก
+      } catch (error) { 
         let errMsg = 'เกิดข้อผิดพลาดในการสแกน';
         
-        // 🌟 เช็ค Error แบบถูกหลัก TypeScript
         if (axios.isAxiosError(error)) {
           errMsg = error.response?.data?.error || error.response?.data?.message || error.message;
         } else if (error instanceof Error) {

@@ -3,7 +3,10 @@ import axios from 'axios';
 import { Calendar, ArrowRight, Image as ImageIcon, Plus, X, Megaphone, Trash2, ExternalLink, Settings } from 'lucide-react';
 import './HomePage.css';
 
-const API_URL = 'http://localhost:3001/api'; 
+// 🌟 FIX: ดึง Base URL จาก Vite Environment (แบบเดียวกับหน้าอื่นๆ)
+// ถ้าไม่มีค่าใน .env ระบบจะ fallback กลับไปใช้ http://localhost:8000 อัตโนมัติ
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = `${BASE_URL}/api`;
 
 interface Banner { id: number; imageUrl: string; isActive: boolean; }
 interface NewsItem { id: number; title: string; content: string; createdAt: string; imageUrl?: string; }

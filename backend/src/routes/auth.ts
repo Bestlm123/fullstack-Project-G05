@@ -18,18 +18,18 @@ console.log("🔍 [Auth.ts] CLIENT_ID:", process.env.CMU_OAUTH_CLIENT_ID ? "Load
 console.log("🔍 [Auth.ts] CALLBACK_URL:", process.env.CMU_OAUTH_CALLBACK_URL);
 console.log("----------------------------------------");
 
-// // ==========================================
-// // 1. ตั้งค่า Session สำหรับจำสถานะการ Login
-// // ==========================================
-// router.use(session({
-//   secret: process.env.SESSION_SECRET || 'admin123',
-//   resave: false,
-//   saveUninitialized: false,
-//   cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 }
-// }));
+// ==========================================
+// 1. ตั้งค่า Session สำหรับจำสถานะการ Login (🌟 ปลดคอมเมนต์แล้ว)
+// ==========================================
+router.use(session({
+  secret: process.env.SESSION_SECRET || 'admin123',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 }
+}));
 
-// router.use(passport.initialize());
-// router.use(passport.session());
+router.use(passport.initialize());
+router.use(passport.session());
 
 // ==========================================
 // 2. ตั้งค่า Serialize / Deserialize User
@@ -114,7 +114,6 @@ passport.use('cmu-oauth', cmuStrategy);
 // ==========================================
 
 // Route 1: เอาไว้เทสต์ยิง Postman หรือ Dev Login
-// Route 1: เอาไว้เทสต์ยิง Postman หรือ Dev Login
 router.post('/login', async (req, res) => {
   try {
     const { studentId, email, fullName, faculty, role } = req.body;
@@ -160,10 +159,13 @@ router.get('/login/cmu', passport.authenticate('cmu-oauth', {
 }));
 
 // Route 3: สำหรับรับข้อมูลกลับมาจากมหาลัย (Callback)
+// 🌟 เปลี่ยน URL ฝั่ง Frontend ตรงนี้ให้ดึงจาก .env (ถ้ามี) หรือฟิกซ์ไปที่ http://localhost:5173
 router.get('/callback', 
   passport.authenticate('cmu-oauth', { failureRedirect: '/login-failed' }),
   (req, res) => {
-    res.redirect('http://localhost:5173/'); 
+    // ดึงค่า URL หน้าบ้านจาก .env (เช่น FRONTEND_URL=http://localhost:5173) ถ้าไม่มีก็ใช้ค่าดั้งเดิม
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173/';
+    res.redirect(frontendUrl); 
   }
 );
 
