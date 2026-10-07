@@ -3,8 +3,10 @@ import axios from 'axios';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Clock, CheckCircle, QrCode, X } from 'lucide-react';
 
-// ✅ แก้ Port เป็น 8000
-const API_URL = 'http://localhost:8000/api';
+// 🌟 FIX: ดึง Base URL จาก Vite Environment (แบบเดียวกับ App.tsx) 
+// ถ้าไม่มีค่าใน .env ระบบจะ fallback กลับไปใช้ http://localhost:8000 อัตโนมัติ
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = `${BASE_URL}/api`;
 
 interface HistoryTabProps {
   currentRole: 'admin' | 'user';

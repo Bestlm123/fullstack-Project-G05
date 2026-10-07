@@ -6,6 +6,12 @@ import InventoryTab from './InventoryTab';
 import HistoryTab from './HistoryTab';
 import './index.css';
 
+// 🌟 ดึง URL ของ Backend มาจากไฟล์ .env ของ Vite (ถ้าไม่มีให้ fallback ไปที่ 8000 ตามที่ตั้งไว้ใน Backend)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// 🌟 ตั้งค่าให้ Axios รู้จัก URL หลักเลย จะได้ไม่ต้องพิมพ์ยาวๆ ทุกครั้งที่เรียก API
+axios.defaults.baseURL = API_URL;
+
 const FacebookIcon = ({ size = 20, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
 );
@@ -27,7 +33,6 @@ interface User {
 function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'inventory' | 'history'>('home');
   
-  // 🌟 FIX: อัปเดตฟังก์ชันดึงค่า User เพื่อดักจับ Error กรณี localStorage คืนค่า "undefined" เป็น String
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser && savedUser !== "undefined") {
@@ -45,7 +50,8 @@ function App() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/auth/me', { withCredentials: true });
+        // ไม่ต้องพิมพ์เต็มแล้ว ใช้ URL จาก BaseURL ที่ตั้งค่าด้านบน
+        const res = await axios.get('/api/auth/me', { withCredentials: true });
         if (res.data.user) {
           setCurrentUser(res.data.user);
           localStorage.setItem('currentUser', JSON.stringify(res.data.user));
@@ -61,12 +67,13 @@ function App() {
   }, [currentUser]);
 
   const handleLoginCMU = () => {
-    window.location.href = 'http://localhost:8000/api/auth/login/cmu';
+    // 🌟 ใช้ตัวแปร API_URL ทำให้เปลี่ยนพอร์ตได้อัตโนมัติ
+    window.location.href = `${API_URL}/api/auth/login/cmu`;
   };
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:8000/api/auth/logout', {}, { withCredentials: true });
+      await axios.post('/api/auth/logout', {}, { withCredentials: true });
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
@@ -76,10 +83,9 @@ function App() {
     }
   };
 
-  // 🛠️ ฟังก์ชันสำหรับ Dev Login จำลองการเข้าระบบ
   const handleDevLogin = async (role: 'admin' | 'user') => {
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/login', {
+      const response = await axios.post('/api/auth/login', {
         studentId: role === 'admin' ? '650610000' : '650610999',
         fullName: role === 'admin' ? 'Admin Tester' : 'Student Tester',
         role: role,
@@ -113,7 +119,6 @@ function App() {
             เข้าสู่ระบบด้วย CMU Account
           </button>
 
-          {/* 🛠️ ปุ่ม Dev Login โผล่มาให้กดเทสต์ง่ายๆ */}
           <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
             <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px' }}>สำหรับนักพัฒนา (Dev Mode)</p>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>

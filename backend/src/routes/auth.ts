@@ -15,7 +15,8 @@ const router = Router();
 // ==========================================
 console.log("----------------------------------------");
 console.log("🔍 [Auth.ts] CLIENT_ID:", process.env.CMU_OAUTH_CLIENT_ID ? "Loaded Successfully ✅" : "MISSING ❌");
-console.log("🔍 [Auth.ts] CALLBACK_URL:", process.env.CMU_OAUTH_CALLBACK_URL);
+// 🌟 เปลี่ยนให้โชว์ URL ที่ดึง PORT มาประกอบร่างแล้ว
+console.log("🔍 [Auth.ts] CALLBACK_URL:", `http://localhost:${process.env.PORT || 8000}/api/auth/callback`);
 console.log("----------------------------------------");
 
 // ==========================================
@@ -55,7 +56,8 @@ const cmuStrategy = new OAuth2Strategy({
     tokenURL: 'https://oauth497.cpecmu.com/application/o/token/',
     clientID: process.env.CMU_OAUTH_CLIENT_ID || '',
     clientSecret: process.env.CMU_OAUTH_CLIENT_SECRET || '',
-    callbackURL: process.env.CMU_OAUTH_CALLBACK_URL || 'http://localhost:8000/api/auth/callback',
+    // 🌟 FIX: ประกอบ URL อัตโนมัติด้วยการดึง PORT จาก .env
+    callbackURL: `http://localhost:${process.env.PORT || 8000}/api/auth/callback`,
   },
   async (accessToken: string, refreshToken: string, results: any, profile: any, done: any) => {
     try {
@@ -77,7 +79,7 @@ const cmuStrategy = new OAuth2Strategy({
       
       // ✅ FIX: ดึงชื่อ-นามสกุลภาษาอังกฤษจาก basic_info
       const fullName = basicInfo.firstname_TH 
-        ? `${basicInfo.firstname_EN} ${basicInfo.lastname_EN}` 
+        ? `${basicInfo.firstname_EN}${basicInfo.lastname_EN}` 
         : (decodedInfo.name || "Unknown");
 
       const finalFaculty = basicInfo.organization_name_EN || getFacultyFromStudentId(studentId);
@@ -99,7 +101,7 @@ const cmuStrategy = new OAuth2Strategy({
   }
 );
 
-// 🌟 FIX: บังคับให้ Passport ยัด Client ID และ Secret ลงไปใน Body ตอนแลก Token
+// 🌟 บังคับให้ Passport ยัด Client ID และ Secret ลงไปใน Body ตอนแลก Token
 cmuStrategy.tokenParams = function() {
   return {
     client_id: process.env.CMU_OAUTH_CLIENT_ID || '',

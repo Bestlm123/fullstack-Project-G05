@@ -5,8 +5,11 @@ import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
-// ✅ แก้ Port เป็น 8000 ให้ตรงกับ Backend
-const API_URL = 'http://localhost:8000/api';
+// 🌟 FIX: ดึง Base URL จาก Vite Environment (แบบเดียวกับ App.tsx) 
+// ถ้าไม่มีค่าใน .env ระบบจะ fallback กลับไปใช้ http://localhost:8000 อัตโนมัติ
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = `${BASE_URL}/api`;
+
 const localizer = momentLocalizer(moment);
 
 interface InventoryTabProps {
@@ -75,7 +78,6 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
 
   const fetchAssets = useCallback(async () => {
     try {
-      // ✅ เปลี่ยนจาก /items เป็น /assets ให้ตรงกับ DB
       const res = await axios.get(`${API_URL}/assets`);
       setAssets(res.data);
     } catch (error) {
@@ -168,7 +170,6 @@ export default function InventoryTab({ currentRole, currentUserId }: InventoryTa
     if (cart.length === 0) return;
     try {
       await Promise.all(cart.map(item => 
-        // ✅ เปลี่ยนจาก /borrow เป็น /borrowings
         axios.post(`${API_URL}/borrowings`, {
           assetId: item.asset.id,
           studentId: currentUserId,

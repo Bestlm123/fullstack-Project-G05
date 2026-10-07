@@ -1,67 +1,73 @@
 import { Router } from 'express';
 import { db } from '../../db/index.js';
-import { borrowings, assets, users } from '../../db/schema.js';
-import { getFacultyFromStudentId } from '../utils/helpers.js';
+import { borrowings, assets } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { requireAuth } from '../utils/authMiddleware.js';
+// ✅ นำเข้าด่านตรวจมาทั้ง 2 ตัว
+import { requireAuth, requireAdmin } from '../utils/authMiddleware.js'; 
+
 const router = Router();
 
-// API: POST /borrowings/borrow (ต้องล็อกอิน)
-router.post('/borrow', requireAuth, async (req, res) => {
+// ==========================================
+// 🛡️ API 1: ทำรายการยืมของ (ผู้ใช้ทั่วไปทำได้)
+// ==========================================
+// สังเกตว่าผมเปลี่ยนจาก /borrow เป็น / เฉยๆ เพื่อให้ตรงกับที่หน้าบ้าน Frontend ยิงมาครับ
+router.post('/', requireAuth, async (req, res) => {
   try {
-    const { studentId, fullName, projectName, pickupDate, returnDate, role, email, faculty, items } = req.body;
+    // ❌ เราจะไม่รับ studentId จาก req.body อีกต่อไป (กันการใช้ F12 แฮ็ก)
+    const { assetId, quantity, borrowDate, returnDate } = req.body;
 
-    if (!studentId || !fullName || !projectName || !pickupDate || !returnDate || !items || !items.length) {
-      return res.status(400).json({ error: 'Missing required fields or items array is empty' });
+    // ✅ ดึงรหัสนักศึกษาจาก Session (Token) ที่ผ่านการยืนยันตัวตนแล้วเท่านั้น!
+    const studentId = (req as any).user.studentId;
+
+    if (!assetId || !quantity || !borrowDate || !returnDate) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    let user = await db.select().from(users).where(eq(users.studentId, studentId));
-    if (user.length === 0) {
-      const newUser = await db.insert(users).values({ 
-        studentId, fullName, role: role || 'user', email: email || null, faculty: faculty || getFacultyFromStudentId(studentId)
-      }).returning();
-      user = newUser;
+    const borrowQty = Number(quantity);
+
+    const targetAsset = await db.select().from(assets).where(eq(assets.id, assetId));
+    if (targetAsset.length === 0) return res.status(404).json({ error: `Asset ID ${assetId} not found` });
+
+    const currentAsset = targetAsset[0];
+    if (currentAsset.availableQuantity < borrowQty) {
+      return res.status(400).json({ error: `Not enough assets for ${currentAsset.name}.` });
     }
 
+    // สร้าง Transaction ID แบบสุ่ม
     const randomDigits = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-    const transactionId = `ENTrent${randomDigits}`;
-    const borrowedRecords = [];
+    const transactionId = `REQ-${randomDigits}`;
 
-    for (const item of items) {
-      const { assetId, quantity } = item;
-      const borrowQty = Number(quantity);
+    const newBorrowing = await db.insert(borrowings).values({
+        transactionId, 
+        studentId, // 👉 ใช้รหัสจริงจาก Backend
+        assetId, 
+        quantity: borrowQty, 
+        borrowDate: new Date(borrowDate), 
+        returnDate: new Date(returnDate), 
+        status: 'borrowed',
+      }).returning();
 
-      const targetAsset = await db.select().from(assets).where(eq(assets.id, assetId));
-      if (targetAsset.length === 0) return res.status(404).json({ error: `Asset ID ${assetId} not found` });
+    // ตัดสต๊อกอุปกรณ์
+    const newAvailableQty = currentAsset.availableQuantity - borrowQty;
+    const newStatus = newAvailableQty === 0 ? 'unavailable' : 'available';
+    await db.update(assets).set({ availableQuantity: newAvailableQty, status: newStatus }).where(eq(assets.id, assetId));
 
-      const currentAsset = targetAsset[0];
-      if (currentAsset.availableQuantity < borrowQty) {
-        return res.status(400).json({ error: `Not enough assets for ${currentAsset.name}.` });
-      }
-
-      const newBorrowing = await db.insert(borrowings).values({
-          transactionId, projectName, pickupDate: new Date(pickupDate), studentId, assetId, 
-          quantity: borrowQty, borrowDate: new Date(), returnDate: new Date(returnDate), status: 'borrowed',
-        }).returning();
-
-      borrowedRecords.push(newBorrowing[0]);
-
-      const newAvailableQty = currentAsset.availableQuantity - borrowQty;
-      const newStatus = newAvailableQty === 0 ? 'unavailable' : 'available';
-      await db.update(assets).set({ availableQuantity: newAvailableQty, status: newStatus }).where(eq(assets.id, assetId));
-    }
-
-    res.status(201).json({ message: 'Borrowing successful', transactionId, borrowings: borrowedRecords });
+    res.status(201).json({ message: 'Borrowing successful', transactionId, borrowing: newBorrowing[0] });
   } catch (error) {
+    console.error("Borrow Error:", error);
     res.status(500).json({ error: 'Failed to process borrowing' });
   }
 });
 
-// API: POST /borrowings/return (ต้องล็อกอิน)
-router.post('/return', requireAuth, async (req, res) => {
+// ==========================================
+// 🛡️ API 2: รับคืนอุปกรณ์ (เฉพาะ Admin เท่านั้น)
+// ==========================================
+// ✅ อัปเกรดความปลอดภัย: เปลี่ยนจาก requireAuth เป็น requireAdmin
+router.post('/return', requireAdmin, async (req, res) => {
   try {
     const { borrowingId } = req.body;
     const targetBorrowing = await db.select().from(borrowings).where(eq(borrowings.id, borrowingId));
+    
     if (targetBorrowing.length === 0 || targetBorrowing[0].status === 'returned') {
       return res.status(400).json({ error: 'Invalid or already returned borrowing record' });
     }
@@ -77,16 +83,30 @@ router.post('/return', requireAuth, async (req, res) => {
       await db.update(assets).set({ availableQuantity: newAvailableQty, status: 'available' })
         .where(eq(assets.id, borrowingRecord.assetId));
     }
+    
     res.status(200).json({ message: 'Return successful', borrowing: updatedBorrowing[0] });
   } catch (error) {
     res.status(500).json({ error: 'Failed to process return' });
   }
 });
 
-// API: GET /borrowings (ต้องล็อกอิน)
+// ==========================================
+// 🛡️ API 3: ดูประวัติการยืม (กรองความปลอดภัยจาก Backend)
+// ==========================================
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const history = await db.select().from(borrowings);
+    const currentUser = (req as any).user;
+    let history;
+
+    // ✅ อัปเกรดความปลอดภัย: กรองข้อมูลให้ตรงกับสิทธิ์
+    if (currentUser.role === 'admin') {
+      // ถ้าเป็น Admin ดึงมาดูได้ทั้งหมด
+      history = await db.select().from(borrowings);
+    } else {
+      // ถ้าเป็น User ธรรมดา บังคับดึงเฉพาะประวัติที่ studentId ตรงกับ Session ตัวเองเท่านั้น!
+      history = await db.select().from(borrowings).where(eq(borrowings.studentId, currentUser.studentId));
+    }
+
     res.status(200).json(history);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch borrowings' });
