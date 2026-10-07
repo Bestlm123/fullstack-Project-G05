@@ -5,6 +5,11 @@ import HomePage from './pages/HomePage';
 import InventoryTab from './InventoryTab';
 import HistoryTab from './HistoryTab';
 import './index.css';
+
+// 🌟 FIX 1: ดึง Base URL จาก Vite Environment
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = `${BASE_URL}/api`;
+
 axios.defaults.withCredentials = true; // บังคับแนบคุกกี้ไปกับทุก API ในโปรเจกต์
 
 const FacebookIcon = ({ size = 20, color = "currentColor" }) => (
@@ -24,18 +29,6 @@ interface User {
   email: string;
   role: 'admin' | 'user';
 }
-<button 
-  onClick={() => {
-    localStorage.clear();
-    window.location.reload();
-  }}
-  style={{ 
-    padding: '10px 20px', backgroundColor: '#ef4444', color: 'white', 
-    position: 'fixed', top: 20, right: 20, zIndex: 9999, borderRadius: '8px'
-  }}
->
-  🚨 ฉุกเฉิน: ล้างข้อมูล & รีเซ็ต
-</button>
 
 function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'inventory' | 'history'>('home');
@@ -58,7 +51,8 @@ function App() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/auth/me', { withCredentials: true });
+        // 🌟 ใช้ API_URL แทนการฮาร์ดโค้ด
+        const res = await axios.get(`${API_URL}/auth/me`, { withCredentials: true });
         if (res.data.user) {
           setCurrentUser(res.data.user);
           localStorage.setItem('currentUser', JSON.stringify(res.data.user));
@@ -76,12 +70,14 @@ function App() {
   }, []); // 👈 ใส่เป็น Dependency ว่างเปล่า [] เพื่อให้รันแค่ตอนเปิดเว็บครั้งแรก
 
   const handleLoginCMU = () => {
-    window.location.href = 'http://localhost:8000/api/auth/login/cmu';
+    // 🌟 ใช้ API_URL แทนการฮาร์ดโค้ด
+    window.location.href = `${API_URL}/auth/login/cmu`;
   };
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:8000/api/auth/logout', {}, { withCredentials: true });
+      // 🌟 ใช้ API_URL แทนการฮาร์ดโค้ด
+      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
@@ -94,7 +90,8 @@ function App() {
   // 🛠️ ฟังก์ชันสำหรับ Dev Login จำลองการเข้าระบบ
   const handleDevLogin = async (role: 'admin' | 'user') => {
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/login', {
+      // 🌟 ใช้ API_URL แทนการฮาร์ดโค้ด
+      const response = await axios.post(`${API_URL}/auth/login`, {
         studentId: role === 'admin' ? '650610000' : '650610999',
         fullName: role === 'admin' ? 'Admin Tester' : 'Student Tester',
         role: role,
@@ -111,9 +108,26 @@ function App() {
     }
   };
 
+  // 🌟 FIX 2: ย้ายปุ่มฉุกเฉินเข้ามาอยู่ในฟังก์ชัน App เพื่อกัน Syntax Error
+  const EmergencyResetButton = (
+    <button 
+      onClick={() => {
+        localStorage.clear();
+        window.location.reload();
+      }}
+      style={{ 
+        padding: '10px 20px', backgroundColor: '#ef4444', color: 'white', 
+        position: 'fixed', top: 20, right: 20, zIndex: 9999, borderRadius: '8px', border: 'none', cursor: 'pointer'
+      }}
+    >
+      🚨 ฉุกเฉิน: ล้างข้อมูล & รีเซ็ต
+    </button>
+  );
+
   if (!currentUser) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', width: '100%', background: '#f3f4f6' }}>
+        {EmergencyResetButton}
         <div className="card" style={{ width: '400px', padding: '32px', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
           <h2 style={{ color: '#8b0000', marginBottom: '16px' }}>Log in</h2>
           <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '14px' }}>
@@ -153,6 +167,7 @@ function App() {
 
   return (
     <div className="app-container">
+      {EmergencyResetButton}
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 

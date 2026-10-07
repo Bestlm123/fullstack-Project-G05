@@ -11,11 +11,15 @@ const router = Router();
 // ==========================================
 router.post('/apply', requireAuth, async (req, res) => { 
   try {
-    const { studentId, eventId, roleId } = req.body;
+    // ❌ เลิกรับ studentId จาก req.body เพื่อกันคนสวมรอย
+    const { eventId, roleId } = req.body;
+
+    // ✅ ดึงรหัสตัวจริงของคนสมัครจาก Session
+    const studentId = (req as any).user.studentId;
 
     // 1. เช็คว่าส่งข้อมูลมาครบไหม
-    if (!studentId || !eventId || !roleId) {
-      return res.status(400).json({ error: 'studentId, eventId, and roleId are required' });
+    if (!eventId || !roleId) {
+      return res.status(400).json({ error: 'eventId and roleId are required' });
     }
 
     // ด่านที่ 0: เช็คว่านักศึกษาคนนี้เคยกรอกประวัติ (userProfiles) หรือยัง?
@@ -66,7 +70,7 @@ router.post('/apply', requireAuth, async (req, res) => {
       .values({
         eventId,
         roleId,
-        studentId,
+        studentId, // ใช้รหัสจาก Session
         status: 'pending'
       })
       .returning();
@@ -94,17 +98,21 @@ router.post('/apply', requireAuth, async (req, res) => {
 // 1. API สำหรับสร้างกิจกรรมใหม่
 router.post('/events', requireAdmin, async (req, res) => {
   try {
-    const { title, description, createdBy } = req.body;
+    // ❌ เลิกรับ createdBy จาก req.body
+    const { title, description } = req.body;
+    
+    // ✅ ดึงรหัสตัวจริงของ Admin จาก Session
+    const createdBy = (req as any).user.studentId;
 
-    if (!title || !createdBy) {
-      return res.status(400).json({ error: 'title and createdBy are required' });
+    if (!title) {
+      return res.status(400).json({ error: 'title is required' });
     }
 
     const newEvent = await db.insert(events)
       .values({
         title,
         description,
-        createdBy,
+        createdBy, // ใช้รหัสจาก Session
         status: 'open'
       })
       .returning();

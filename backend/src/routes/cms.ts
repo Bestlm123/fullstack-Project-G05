@@ -16,7 +16,12 @@ router.get('/news', async (req, res) => {
 
 router.post('/news', requireAdmin, async (req, res) => {
   try {
-    const { title, content, authorId } = req.body;
+    // ❌ เลิกรับ authorId จาก req.body
+    const { title, content } = req.body;
+    
+    // ✅ ดึงรหัสผู้เขียนข่าวจาก Session ของ Admin แทน
+    const authorId = (req as any).user.studentId;
+
     const newArticle = await db.insert(news).values({ title, content, authorId }).returning();
     res.status(201).json(newArticle[0]);
   } catch (error) { res.status(500).json({ error: 'Failed to add news' }); }
@@ -24,7 +29,7 @@ router.post('/news', requireAdmin, async (req, res) => {
 
 router.delete('/news/:id', requireAdmin, async (req, res) => {
   try {
-    await db.delete(news).where(eq(news.id, parseInt(req.params.id as string))); // 👈 แก้ตรงนี้
+    await db.delete(news).where(eq(news.id, parseInt(req.params.id as string))); 
     res.status(204).send();
   } catch (error) { res.status(500).json({ error: 'Failed to delete news' }); }
 });
