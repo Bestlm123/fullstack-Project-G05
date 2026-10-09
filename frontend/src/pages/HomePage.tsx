@@ -3,10 +3,10 @@ import axios from 'axios';
 import { Calendar, ArrowRight, Image as ImageIcon, Plus, X, Megaphone, Trash2, ExternalLink, Settings } from 'lucide-react';
 import './HomePage.css';
 
-// 🌟 FIX: ดึง Base URL จาก Vite Environment (แบบเดียวกับหน้าอื่นๆ)
-// ถ้าไม่มีค่าใน .env ระบบจะ fallback กลับไปใช้ http://localhost:8000 อัตโนมัติ
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const API_URL = `${BASE_URL}/api`;
+const API_URL = `${BASE_URL}/api`; 
+
+axios.defaults.withCredentials = true;
 
 interface Banner { id: number; imageUrl: string; isActive: boolean; }
 interface NewsItem { id: number; title: string; content: string; createdAt: string; imageUrl?: string; }
@@ -15,10 +15,11 @@ interface EventItem { id: number; date: string; month: string; title: string; ti
 
 interface HomePageProps {
   currentRole: 'admin' | 'user';
-  currentUserId: string; // <-- เพิ่มบรรทัดนี้
+  // 🌟 FIX: ลบ currentUserId ออกจาก Interface เพราะไม่ได้ใช้แล้ว
 }
 
-export default function HomePage({ currentRole, currentUserId }: HomePageProps) {
+// 🌟 FIX: ลบ currentUserId ออกจาก parameter
+export default function HomePage({ currentRole }: HomePageProps) {
   
   const [banners, setBanners] = useState<Banner[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -43,7 +44,12 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
 
   const fetchHomePageData = useCallback(async () => {
     try {
-      const bannerRes = await axios.get(`${API_URL}/banners`);
+      const [bannerRes, newsRes, settingsRes] = await Promise.all([
+        axios.get(`${API_URL}/banners`),
+        axios.get(`${API_URL}/news`),
+        axios.get(`${API_URL}/settings`)
+      ]);
+
       const activeBanners = bannerRes.data.filter((b: Banner) => b.isActive);
       if (activeBanners.length > 0) {
         setBanners(activeBanners);
@@ -51,11 +57,9 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
         setBanners([{ id: 0, imageUrl: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1200', isActive: true }]);
       }
 
-      const newsRes = await axios.get(`${API_URL}/news`);
       const sortedNews = newsRes.data.sort((a: NewsItem, b: NewsItem) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setNewsList(sortedNews);
 
-      const settingsRes = await axios.get(`${API_URL}/settings`);
       const cdDate = settingsRes.data.find((s: SiteSetting) => s.key === 'countdown_date');
       const cdTitle = settingsRes.data.find((s: SiteSetting) => s.key === 'countdown_title');
       const cdImage = settingsRes.data.find((s: SiteSetting) => s.key === 'countdown_image');
@@ -63,13 +67,13 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
       if (cdDate) setCountdownDate(cdDate.value);
       if (cdTitle) setCountdownTitle(cdTitle.value);
       if (cdImage) setCountdownImage(cdImage.value);
+
     } catch (error) {
       console.error("Error fetching homepage data:", error);
     }
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchHomePageData();
   }, [fetchHomePageData]);
 
@@ -120,19 +124,18 @@ export default function HomePage({ currentRole, currentUserId }: HomePageProps) 
       await axios.post(`${API_URL}/news`, {
         title: newNewsData.title,
         content: newNewsData.content,
-        imageUrl: newNewsData.imageUrl || null, 
-        authorId: currentUserId // <-- ใช้ไอดีคนที่ล็อกอินอยู่
+        imageUrl: newNewsData.imageUrl || null 
       });
       alert('เพิ่มข่าวสำเร็จ!');
       setIsAddNewsModalOpen(false); 
       fetchHomePageData(); 
     } catch (error) {
       console.error(error);
+      let errorMsg = 'เกิดข้อผิดพลาดในการเพิ่มข่าว';
       if (axios.isAxiosError(error)) {
-        alert(`เพิ่มข่าวไม่สำเร็จ: ${error.response?.data?.error}`);
-      } else {
-        alert('เกิดข้อผิดพลาดในการเพิ่มข่าว');
+        errorMsg = error.response?.data?.error || error.response?.data?.message || error.message;
       }
+      alert(`เพิ่มข่าวไม่สำเร็จ: ${errorMsg}`);
     }
   };
 

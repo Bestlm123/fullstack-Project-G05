@@ -19,7 +19,7 @@ console.log("🔍 [Auth.ts] CALLBACK_URL:", process.env.CMU_OAUTH_CALLBACK_URL);
 console.log("----------------------------------------");
 
 // ==========================================
-// 1. ตั้งค่า Session สำหรับจำสถานะการ Login (🌟 ปลดคอมเมนต์แล้ว)
+// 1. ตั้งค่า Session สำหรับจำสถานะการ Login
 // ==========================================
 router.use(session({
   secret: process.env.SESSION_SECRET || 'admin123',
@@ -75,7 +75,6 @@ const cmuStrategy = new OAuth2Strategy({
       // ✅ FIX: ดึงรหัส 9 หลักจาก basic_info.student_id โดยตรง
       const studentId = basicInfo.student_id || studentEmail.split('@')[0];
       
-      // ✅ FIX: ดึงชื่อ-นามสกุลภาษาอังกฤษจาก basic_info
       const fullName = basicInfo.firstname_TH 
         ? `${basicInfo.firstname_EN} ${basicInfo.lastname_EN}` 
         : (decodedInfo.name || "Unknown");
@@ -159,13 +158,10 @@ router.get('/login/cmu', passport.authenticate('cmu-oauth', {
 }));
 
 // Route 3: สำหรับรับข้อมูลกลับมาจากมหาลัย (Callback)
-// 🌟 เปลี่ยน URL ฝั่ง Frontend ตรงนี้ให้ดึงจาก .env (ถ้ามี) หรือฟิกซ์ไปที่ http://localhost:5173
 router.get('/callback', 
   passport.authenticate('cmu-oauth', { failureRedirect: '/login-failed' }),
   (req, res) => {
-    // ดึงค่า URL หน้าบ้านจาก .env (เช่น FRONTEND_URL=http://localhost:5173) ถ้าไม่มีก็ใช้ค่าดั้งเดิม
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173/';
-    res.redirect(frontendUrl); 
+    res.redirect('http://localhost:5173/'); 
   }
 );
 

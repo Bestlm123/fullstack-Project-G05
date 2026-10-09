@@ -11,27 +11,43 @@ router.get('/news', async (req, res) => {
   try {
     const allNews = await db.select().from(news);
     res.status(200).json(allNews);
-  } catch (error) { res.status(500).json({ error: 'Failed to fetch news' }); }
+  } catch (error) { 
+    console.error("Fetch news error:", error);
+    res.status(500).json({ error: 'Failed to fetch news' }); 
+  }
 });
 
 router.post('/news', requireAdmin, async (req, res) => {
   try {
-    // ❌ เลิกรับ authorId จาก req.body
-    const { title, content } = req.body;
+    // 🌟 FIX: เลิครับ authorId จากหน้าบ้าน เพื่อป้องกันการปลอมแปลง
+    const { title, content, imageUrl } = req.body;
     
-    // ✅ ดึงรหัสผู้เขียนข่าวจาก Session ของ Admin แทน
-    const authorId = (req as any).user.studentId;
-
-    const newArticle = await db.insert(news).values({ title, content, authorId }).returning();
+    // 🌟 ดึงไอดีผู้เขียนจากคนที่ล็อกอินอยู่แทน (ปลอดภัย 100%)
+    const authorId = (req as any).user?.studentId || null;
+    
+    const newArticle = await db.insert(news).values({ 
+      title, 
+      content, 
+      imageUrl: imageUrl || null, 
+      authorId 
+    }).returning();
+    
     res.status(201).json(newArticle[0]);
-  } catch (error) { res.status(500).json({ error: 'Failed to add news' }); }
+  } catch (error) { 
+    console.error("Add news error:", error);
+    res.status(500).json({ error: 'Failed to add news' }); 
+  }
 });
 
 router.delete('/news/:id', requireAdmin, async (req, res) => {
   try {
-    await db.delete(news).where(eq(news.id, parseInt(req.params.id as string))); 
+    // 🌟 แนะนำ: ใส่เลข 10 เพื่อบอกว่าเป็นเลขฐานสิบ (Best Practice)
+    await db.delete(news).where(eq(news.id, parseInt(req.params.id as string, 10)));
     res.status(204).send();
-  } catch (error) { res.status(500).json({ error: 'Failed to delete news' }); }
+  } catch (error) { 
+    console.error("Delete news error:", error);
+    res.status(500).json({ error: 'Failed to delete news' }); 
+  }
 });
 
 // --- Banners ---
@@ -53,14 +69,14 @@ router.post('/banners', requireAdmin, async (req, res) => {
 router.put('/banners/:id', requireAdmin, async (req, res) => {
   try {
     const updatedBanner = await db.update(banners).set({ isActive: req.body.isActive })
-      .where(eq(banners.id, parseInt(req.params.id as string))).returning();
+      .where(eq(banners.id, parseInt(req.params.id as string, 10))).returning();
     res.status(200).json(updatedBanner[0]);
   } catch (error) { res.status(500).json({ error: 'Failed to update banner' }); }
 });
 
 router.delete('/banners/:id', requireAdmin, async (req, res) => {
   try {
-    await db.delete(banners).where(eq(banners.id, parseInt(req.params.id as string)));
+    await db.delete(banners).where(eq(banners.id, parseInt(req.params.id as string, 10)));
     res.status(204).send();
   } catch (error) { res.status(500).json({ error: 'Failed to delete banner' }); }
 });
