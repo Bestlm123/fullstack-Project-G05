@@ -6,11 +6,9 @@ import InventoryTab from './InventoryTab';
 import HistoryTab from './HistoryTab';
 import './index.css';
 
-// 🌟 FIX 1: ดึง Base URL จาก Vite Environment
+// 🌟 FIX: เปลี่ยน Base URL ให้อ่านจาก Environment Variable เพื่อความพร้อมในการ Deploy จริง
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const API_URL = `${BASE_URL}/api`;
-
-axios.defaults.withCredentials = true; // บังคับแนบคุกกี้ไปกับทุก API ในโปรเจกต์
+axios.defaults.withCredentials = true; 
 
 const FacebookIcon = ({ size = 20, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
@@ -33,7 +31,6 @@ interface User {
 function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'inventory' | 'history'>('home');
   
-  // 🌟 FIX: อัปเดตฟังก์ชันดึงค่า User เพื่อดักจับ Error กรณี localStorage คืนค่า "undefined" เป็น String
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser && savedUser !== "undefined") {
@@ -51,33 +48,27 @@ function App() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // 🌟 ใช้ API_URL แทนการฮาร์ดโค้ด
-        const res = await axios.get(`${API_URL}/auth/me`, { withCredentials: true });
+        const res = await axios.get(`${BASE_URL}/api/auth/me`, { withCredentials: true });
         if (res.data.user) {
           setCurrentUser(res.data.user);
           localStorage.setItem('currentUser', JSON.stringify(res.data.user));
         }
       } catch {
         console.log("ยังไม่ได้ล็อกอิน หรือ Session หมดอายุ");
-        // 🌟 FIX: ถ้า Backend บอกว่าไม่ได้ล็อกอิน ให้ล้างข้อมูลทิ้งเพื่อให้กลับไปหน้า Login
         setCurrentUser(null);
         localStorage.removeItem('currentUser');
       }
     };
-
-    // 🌟 FIX: สั่งให้ตรวจสอบกับ Backend เสมอเมื่อโหลดแอป (เอา if (!currentUser) ออก)
     fetchUserData();
-  }, []); // 👈 ใส่เป็น Dependency ว่างเปล่า [] เพื่อให้รันแค่ตอนเปิดเว็บครั้งแรก
+  }, []); 
 
   const handleLoginCMU = () => {
-    // 🌟 ใช้ API_URL แทนการฮาร์ดโค้ด
-    window.location.href = `${API_URL}/auth/login/cmu`;
+    window.location.href = `${BASE_URL}/api/auth/login/cmu`;
   };
 
   const handleLogout = async () => {
     try {
-      // 🌟 ใช้ API_URL แทนการฮาร์ดโค้ด
-      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+      await axios.post(`${BASE_URL}/api/auth/logout`, {}, { withCredentials: true });
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
@@ -87,11 +78,9 @@ function App() {
     }
   };
 
-  // 🛠️ ฟังก์ชันสำหรับ Dev Login จำลองการเข้าระบบ
   const handleDevLogin = async (role: 'admin' | 'user') => {
     try {
-      // 🌟 ใช้ API_URL แทนการฮาร์ดโค้ด
-      const response = await axios.post(`${API_URL}/auth/login`, {
+      const response = await axios.post(`${BASE_URL}/api/auth/login`, {
         studentId: role === 'admin' ? '650610000' : '650610999',
         fullName: role === 'admin' ? 'Admin Tester' : 'Student Tester',
         role: role,
@@ -108,26 +97,9 @@ function App() {
     }
   };
 
-  // 🌟 FIX 2: ย้ายปุ่มฉุกเฉินเข้ามาอยู่ในฟังก์ชัน App เพื่อกัน Syntax Error
-  const EmergencyResetButton = (
-    <button 
-      onClick={() => {
-        localStorage.clear();
-        window.location.reload();
-      }}
-      style={{ 
-        padding: '10px 20px', backgroundColor: '#ef4444', color: 'white', 
-        position: 'fixed', top: 20, right: 20, zIndex: 9999, borderRadius: '8px', border: 'none', cursor: 'pointer'
-      }}
-    >
-      🚨 ฉุกเฉิน: ล้างข้อมูล & รีเซ็ต
-    </button>
-  );
-
   if (!currentUser) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', width: '100%', background: '#f3f4f6' }}>
-        {EmergencyResetButton}
         <div className="card" style={{ width: '400px', padding: '32px', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
           <h2 style={{ color: '#8b0000', marginBottom: '16px' }}>Log in</h2>
           <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '14px' }}>
@@ -142,7 +114,6 @@ function App() {
             เข้าสู่ระบบด้วย CMU Account
           </button>
 
-          {/* 🛠️ ปุ่ม Dev Login โผล่มาให้กดเทสต์ง่ายๆ */}
           <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
             <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px' }}>สำหรับนักพัฒนา (Dev Mode)</p>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
@@ -167,7 +138,20 @@ function App() {
 
   return (
     <div className="app-container">
-      {EmergencyResetButton}
+      {/* 🌟 ย้ายปุ่มฉุกเฉินเข้ามาอยู่ใน Component หลัก (ถ้าไม่ใช้แล้วแนะนำให้ลบทิ้งเลยครับ) */}
+      <button 
+        onClick={() => {
+          localStorage.clear();
+          window.location.reload();
+        }}
+        style={{ 
+          padding: '10px 20px', backgroundColor: '#ef4444', color: 'white', 
+          position: 'fixed', top: 20, right: 20, zIndex: 9999, borderRadius: '8px', border: 'none', cursor: 'pointer'
+        }}
+      >
+        🚨 ฉุกเฉิน: ล้างข้อมูล & รีเซ็ต
+      </button>
+
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -198,7 +182,8 @@ function App() {
         </header>
 
         <div className="content-area">
-          {activeTab === 'home' && <HomePage currentRole={currentUser.role} currentUserId={currentUser.studentId} />}
+          {/* 🌟 FIX: เอา currentUserId ออกจาก HomePage เพราะไฟล์ HomePage.tsx เราเพิ่งลบมันทิ้งไปแล้ว */}
+          {activeTab === 'home' && <HomePage currentRole={currentUser.role} />}
           {activeTab === 'inventory' && <InventoryTab currentRole={currentUser.role} currentUserId={currentUser.studentId} />}
           {activeTab === 'history' && <HistoryTab currentRole={currentUser.role} currentUserId={currentUser.studentId} />}
         </div>

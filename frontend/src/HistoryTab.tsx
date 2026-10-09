@@ -3,7 +3,7 @@ import axios from 'axios';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Clock, QrCode, X, ScanLine } from 'lucide-react';
 
-// 🌟 FIX 1: ดึง Base URL จาก Vite Environment ให้ระบบฉลาดขึ้น
+// 🌟 FIX: ปรับให้ดึงจาก .env แบบเดียวกับหน้าอื่นๆ
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const API_URL = `${BASE_URL}/api`;
 
@@ -39,8 +39,7 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
     try {
       const [borrowRes, itemRes] = await Promise.all([
         axios.get(`${API_URL}/borrowings`),
-        // 🌟 FIX 2: เปลี่ยนจาก /items เป็น /assets ให้ตรงกับ Backend
-        axios.get(`${API_URL}/assets`)
+        axios.get(`${API_URL}/items`)
       ]);
       
       setAssets(itemRes.data);
@@ -56,7 +55,6 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
   }, [currentRole, currentUserId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
     
     const interval = setInterval(() => {
@@ -202,7 +200,7 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
                 size={200} 
                 level={"H"}
                 imageSettings={{
-                  src: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Eq_it-na_pizza-margherita_sep2005_sml.jpg/120px-Eq_it-na_pizza-margherita_sep2005_sml.jpg",
+                  src: "https://scontent.fcnx1-1.fna.fbcdn.net/v/t39.30808-6/447246326_354283237676634_1154175774973531012_n.jpg?stp=dst-jpg_tt6&cstp=mx959x960&ctp=s959x960&_nc_cat=110&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=a5f93a&_nc_eui2=AeHO9dAbS3KM4BHwtWwRrsBlzgt3HkO_JLzOC3ceQ78kvIjls87cl4RtDxxFHoUZ8_fknOt5AEF5Ir6dSVQZsOel&_nc_ohc=b6PNjnlkywoQ7kNvwGmIV64&_nc_oc=AdpfbSZ80Ie7hNLjtM2D1pRHcHbCZh13RoP3tQ36unlocnZCrHOzUSlOEutI3CstKBc&_nc_zt=23&_nc_ht=scontent.fcnx1-1.fna&_nc_gid=YnZIojaSlP22HtaYk-2FPg&_nc_ss=7b2a8&oh=00_AQNsfOCaBPM4C_caQ5GquG4WH2yafFMzO1uAa2PdUih51w&oe=6AC505B6",
                   x: undefined, y: undefined, height: 40, width: 40, excavate: true,
                 }}
               />

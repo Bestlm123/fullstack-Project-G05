@@ -11,13 +11,15 @@ const router = Router();
 // ==========================================
 router.post('/apply', requireAuth, async (req, res) => { 
   try {
-    // ❌ เลิกรับ studentId จาก req.body เพื่อกันคนสวมรอย
     const { eventId, roleId } = req.body;
+    
+    // 🌟 FIX 1: ดึงรหัสนศ. จาก Session ของคนที่ล็อกอินอยู่ ป้องกันการส่งรหัสคนอื่นมาแอบอ้างสมัคร
+    const studentId = (req as any).user?.studentId;
 
-    // ✅ ดึงรหัสตัวจริงของคนสมัครจาก Session
-    const studentId = (req as any).user.studentId;
+    if (!studentId) {
+      return res.status(401).json({ error: 'Unauthorized: User session not found' });
+    }
 
-    // 1. เช็คว่าส่งข้อมูลมาครบไหม
     if (!eventId || !roleId) {
       return res.status(400).json({ error: 'eventId and roleId are required' });
     }
@@ -32,7 +34,7 @@ router.post('/apply', requireAuth, async (req, res) => {
       });
     }
 
-    // 2. ด่านที่ 1: เช็คว่ากิจกรรมนี้มีอยู่จริงไหม และ "เปิดรับสมัครอยู่" หรือเปล่า?
+    // ด่านที่ 1: เช็คว่ากิจกรรมนี้มีอยู่จริงไหม และ "เปิดรับสมัครอยู่" หรือเปล่า?
     const targetEvent = await db.select().from(events).where(eq(events.id, eventId));
     if (targetEvent.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
@@ -41,7 +43,7 @@ router.post('/apply', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'This event is no longer accepting applications (ปิดรับสมัครแล้ว)' });
     }
 
-    // 3. ด่านที่ 2: เช็คว่าตำแหน่งที่เลือกมีอยู่จริงไหม และ "โควต้าเต็มหรือยัง?"
+    // ด่านที่ 2: เช็คว่าตำแหน่งที่เลือกมีอยู่จริงไหม และ "โควต้าเต็มหรือยัง?"
     const targetRole = await db.select().from(eventRoles).where(eq(eventRoles.id, roleId));
     if (targetRole.length === 0) {
       return res.status(404).json({ error: 'Role not found' });
@@ -52,7 +54,7 @@ router.post('/apply', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Sorry, the quota for this role is already full (โควต้าเต็มแล้ว)' });
     }
 
-    // 4. ด่านที่ 3: เช็คว่านักศึกษาคนนี้ "เคยกดสมัครตำแหน่งนี้ไปแล้วหรือยัง?"
+    // ด่านที่ 3: เช็คว่านักศึกษาคนนี้ "เคยกดสมัครตำแหน่งนี้ไปแล้วหรือยัง?"
     const existingApp = await db.select().from(applications)
       .where(
         and(
@@ -65,17 +67,17 @@ router.post('/apply', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'You have already applied for this role (คุณสมัครตำแหน่งนี้ไปแล้ว)' });
     }
 
-    // 5. ผ่านทุกด่าน! บันทึกข้อมูลการสมัครลง Database
+    // ผ่านทุกด่าน! บันทึกข้อมูลการสมัครลง Database
     const newApplication = await db.insert(applications)
       .values({
         eventId,
         roleId,
-        studentId, // ใช้รหัสจาก Session
+        studentId,
         status: 'pending'
       })
       .returning();
 
-    // 6. อัปเดตลดจำนวนโควต้า (availableQuota) ของตำแหน่งนั้นลง 1
+    // อัปเดตลดจำนวนโควต้า (availableQuota) ของตำแหน่งนั้นลง 1
     await db.update(eventRoles)
       .set({ availableQuota: currentRole.availableQuota - 1 })
       .where(eq(eventRoles.id, roleId));
@@ -98,21 +100,20 @@ router.post('/apply', requireAuth, async (req, res) => {
 // 1. API สำหรับสร้างกิจกรรมใหม่
 router.post('/events', requireAdmin, async (req, res) => {
   try {
-    // ❌ เลิกรับ createdBy จาก req.body
     const { title, description } = req.body;
     
-    // ✅ ดึงรหัสตัวจริงของ Admin จาก Session
-    const createdBy = (req as any).user.studentId;
+    // 🌟 FIX 2: ดึงไอดีจากคนสร้างจริง (Admin) จาก Session ป้องกันการใส่ชื่อคนอื่นมั่วๆ
+    const createdBy = (req as any).user?.studentId;
 
-    if (!title) {
-      return res.status(400).json({ error: 'title is required' });
+    if (!title || !createdBy) {
+      return res.status(400).json({ error: 'title and valid admin session are required' });
     }
 
     const newEvent = await db.insert(events)
       .values({
         title,
         description,
-        createdBy, // ใช้รหัสจาก Session
+        createdBy,
         status: 'open'
       })
       .returning();
@@ -131,7 +132,7 @@ router.post('/events', requireAdmin, async (req, res) => {
 // 2. API สำหรับเพิ่ม "ตำแหน่งและโควต้า" เข้าไปในกิจกรรม
 router.post('/events/:eventId/roles', requireAdmin, async (req, res) => { 
   try {
-    const eventId = parseInt(req.params.eventId as string);
+    const eventId = parseInt(req.params.eventId as string, 10);
     const { roleName, totalQuota } = req.body;
 
     if (!roleName || totalQuota === undefined) {
@@ -168,7 +169,7 @@ router.post('/events/:eventId/roles', requireAdmin, async (req, res) => {
 // ==========================================
 router.put('/applications/:id/status', requireAdmin, async (req, res) => { 
   try {
-    const applicationId = parseInt(req.params.id as string);
+    const applicationId = parseInt(req.params.id as string, 10);
     const { status } = req.body; 
 
     if (!['approved', 'rejected'].includes(status)) {
@@ -186,7 +187,9 @@ router.put('/applications/:id/status', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: `Application is already ${status}` });
     }
 
-    if (status === 'rejected' && currentApp.status === 'pending') {
+    // 🌟 FIX 3: แก้ไข Logic การคืน/หัก โควต้าให้ครอบคลุมมากขึ้น
+    // กรณีที่ 1: เปลี่ยนสถานะเป็น rejected (ต้องคืนโควต้า +1 ให้ระบบเสมอ ไม่ว่าก่อนหน้านี้จะ pending หรือ approved)
+    if (status === 'rejected' && (currentApp.status === 'pending' || currentApp.status === 'approved')) {
       const targetRole = await db.select().from(eventRoles).where(eq(eventRoles.id, currentApp.roleId));
       if (targetRole.length > 0) {
         await db.update(eventRoles)
@@ -195,6 +198,7 @@ router.put('/applications/:id/status', requireAdmin, async (req, res) => {
       }
     }
 
+    // กรณีที่ 2: เปลี่ยนใจจาก rejected กลับมาเป็น approved (ต้องหักโควต้า -1 กลับคืนมา)
     if (status === 'approved' && currentApp.status === 'rejected') {
        const targetRole = await db.select().from(eventRoles).where(eq(eventRoles.id, currentApp.roleId));
        if (targetRole.length > 0) {
@@ -207,6 +211,7 @@ router.put('/applications/:id/status', requireAdmin, async (req, res) => {
        }
     }
 
+    // อัปเดตสถานะสุดท้ายลงในฐานข้อมูล
     const updatedApp = await db.update(applications)
       .set({ status })
       .where(eq(applications.id, applicationId))

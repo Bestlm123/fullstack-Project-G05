@@ -5,7 +5,7 @@ import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
-// 🌟 FIX 1: ดึง Base URL จาก Vite Environment
+// 🌟 FIX 1: ดึง URL จาก Environment Variable เพื่อความปลอดภัยและความยืดหยุ่นตอน Deploy
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const API_URL = `${BASE_URL}/api`;
 
@@ -58,7 +58,7 @@ interface BorrowingRecord {
 
 const CATEGORIES = ['ทั้งหมด', 'ทั่วไป', 'อิเล็กทรอนิกส์', 'เครื่องเขียน/อุปกรณ์จัดงาน', 'กีฬา', 'อื่นๆ'];
 
-export default function InventoryTab({ currentRole }: InventoryTabProps)  {
+export default function InventoryTab({ currentRole, currentUserId }: InventoryTabProps) {
   const [viewState, setViewState] = useState<'catalog' | 'booking' | 'cart' | 'receipt'>('catalog');
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
@@ -85,11 +85,7 @@ export default function InventoryTab({ currentRole }: InventoryTabProps)  {
   }, []);
 
   useEffect(() => {
-    const initFetch = async () => {
-      await fetchAssets();
-    };
-    initFetch();
-    
+    fetchAssets();
     const interval = setInterval(fetchAssets, 3000);
     return () => clearInterval(interval);
   }, [fetchAssets]);
@@ -119,9 +115,15 @@ export default function InventoryTab({ currentRole }: InventoryTabProps)  {
     
     const today = new Date();
     const tmr = new Date(today); tmr.setDate(tmr.getDate() + 1);
+    
+    // 🌟 FIX 2: ป้องกันผู้ใช้ตั้งเวลายืมเป็นอดีต (ให้ตั้งเป็นเวลาปัจจุบัน)
+    const currentHour = today.getHours().toString().padStart(2, '0');
+    const currentMinute = today.getMinutes().toString().padStart(2, '0');
+
     setBookingForm({
       ...bookingForm,
       startDate: today.toISOString().split('T')[0],
+      startTime: `${currentHour}:${currentMinute}`,
       endDate: tmr.toISOString().split('T')[0],
       quantity: 1
     });
@@ -186,9 +188,10 @@ export default function InventoryTab({ currentRole }: InventoryTabProps)  {
     if (cart.length === 0) return;
     try {
       await Promise.all(cart.map(item => 
-        // 🌟 FIX 2: ป้องกันช่องโหว่ความปลอดภัย โดยไม่ส่ง studentId และ fullName ไปจากหน้าบ้าน
         axios.post(`${API_URL}/borrowings`, {
           assetId: item.asset.id,
+          studentId: currentUserId,
+          fullName: "ผู้ใช้งานระบบ", 
           quantity: item.quantity,
           borrowDate: item.borrowDate,
           returnDate: item.returnDate
@@ -206,18 +209,15 @@ export default function InventoryTab({ currentRole }: InventoryTabProps)  {
       setViewState('receipt'); 
     } catch (error) {
       console.error("Checkout Error:", error);
-      
       let errorMessage = 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ';
-      
       if (axios.isAxiosError(error)) {
         errorMessage = error.response?.data?.error || error.response?.data?.message || error.message;
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
-      alert(`ยืมไม่สำเร็จ สาเหตุ: ${errorMessage}\n\n(ลองกด F12 ดูแถบ Console หรือดูในหน้าจอ Terminal ของ Backend)`);
+      alert(`ยืมไม่สำเร็จ สาเหตุ: ${errorMessage}`);
     }
-  }; 
+  };
 
   const handleOpenAddModal = () => {
     setIsEditMode(false);
@@ -246,9 +246,13 @@ export default function InventoryTab({ currentRole }: InventoryTabProps)  {
   const handleSaveAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // 🌟 FIX 3: ป้องกันบั๊ก Not a Number (NaN) ตอนรับค่าจาก Input
+      const validQuantity = isNaN(formData.quantity) || formData.quantity < 1 ? 1 : formData.quantity;
+      
       const payload = {
         ...formData,
-        availableQuantity: formData.quantity, 
+        quantity: validQuantity,
+        availableQuantity: validQuantity, 
       };
 
       if (isEditMode) {
@@ -328,7 +332,8 @@ export default function InventoryTab({ currentRole }: InventoryTabProps)  {
             ) : (
               filteredAssets.map((item) => {
                 const cartItem = cart.find(c => c.asset.id === item.id);
-                const displayAvailable = item.availableQuantity - (cartItem ? cartItem.quantity : 0);
+                // 🌟 FIX 4: บังคับให้ displayAvailable ไม่แสดงค่าติดลบเด็ดขาด (กันหน้าพัง)
+                const displayAvailable = Math.max(0, item.availableQuantity - (cartItem ? cartItem.quantity : 0));
 
                 return (
                   <div key={item.id} style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -343,7 +348,7 @@ export default function InventoryTab({ currentRole }: InventoryTabProps)  {
                     <div style={{ height: '160px', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundImage: `url(${item.imageUrl || 'https://placehold.co/400x300?text=No+Image'})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
                     </div>
                     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>#{item.id} • {item.category}</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>#{item.id} {item.category}</div>
                       <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 12px 0', color: '#111827' }}>{item.name}</h3>
                       <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '14px', color: displayAvailable > 0 ? '#166534' : '#991b1b', fontWeight: 'bold', backgroundColor: displayAvailable > 0 ? '#dcfce7' : '#fee2e2', padding: '4px 8px', borderRadius: '6px' }}>
@@ -442,7 +447,7 @@ export default function InventoryTab({ currentRole }: InventoryTabProps)  {
           </div>
 
           {cart.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>ตะกร้าว่างเปล่าครับ กลับไปเลือกของก่อนนะ</div>
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>ยังไม่มีรายการการยืม</div>
           ) : (
             <>
               <div style={{ borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', padding: '16px 0', marginBottom: '24px' }}>
