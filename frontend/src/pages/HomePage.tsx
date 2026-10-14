@@ -1,12 +1,47 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Calendar, ArrowRight, Image as ImageIcon, Plus, X, Megaphone, Trash2, ExternalLink, Settings } from 'lucide-react';
+import { Calendar, ArrowRight, Plus, X, Megaphone, Trash2, ExternalLink, Settings, Upload } from 'lucide-react';
 import './HomePage.css';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const API_URL = `${BASE_URL}/api`; 
+const API_URL = `${BASE_URL}/api`;
 
 axios.defaults.withCredentials = true;
+
+// ฟังก์ชันบีบอัดและแปลงไฟล์รูปภาพเป็น Base64 เพื่อบันทึกลง Database โดยตรง
+const convertImageFileToBase64 = (file: File, maxDim = 900): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > height && width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.78));
+        } else {
+          resolve(String(e.target?.result || ''));
+        }
+      };
+      img.onerror = reject;
+      img.src = String(e.target?.result || '');
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
 interface Banner { id: number; imageUrl: string; isActive: boolean; }
 interface NewsItem { id: number; title: string; content: string; createdAt: string; imageUrl?: string; }
@@ -15,21 +50,20 @@ interface EventItem { id: number; date: string; month: string; title: string; ti
 
 interface HomePageProps {
   currentRole: 'admin' | 'user';
-  // 🌟 FIX: ลบ currentUserId ออกจาก Interface เพราะไม่ได้ใช้แล้ว
 }
 
-// 🌟 FIX: ลบ currentUserId ออกจาก parameter
 export default function HomePage({ currentRole }: HomePageProps) {
-  
+  const bannerFileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [banners, setBanners] = useState<Banner[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [newsList, setNewsList] = useState<NewsItem[]>([]);
   const [showAllNews, setShowAllNews] = useState(false);
-  
-  const [countdownDate, setCountdownDate] = useState('2026-08-30'); 
-  const [countdownTitle, setCountdownTitle] = useState('🔥 กิจกรรมเป้าหมายถัดไป'); 
-  const [countdownImage, setCountdownImage] = useState('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=400'); 
-  
+
+  const [countdownDate, setCountdownDate] = useState('2026-08-30');
+  const [countdownTitle, setCountdownTitle] = useState('🔥 กิจกรรมเป้าหมายถัดไป');
+  const [countdownImage, setCountdownImage] = useState('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=400');
+
   const [eventsList] = useState<EventItem[]>([
     { id: 1, date: '14', month: 'ส.ค.', title: 'พรีโปรเจค ! ! !', time: '08:00 - 16:00 น.' },
     { id: 2, date: '15', month: 'ก.ย.', title: 'กีฬาสีวิศวะ (Gear Games)', time: 'ตลอดวัน' }
@@ -42,7 +76,7 @@ export default function HomePage({ currentRole }: HomePageProps) {
   const [isEditCountdownModalOpen, setIsEditCountdownModalOpen] = useState(false);
   const [editCountdownData, setEditCountdownData] = useState({ date: '', title: '', imageUrl: '' });
 
-  const fetchHomePageData = useCallback(async () => {
+  const fetchHomePageData = async () => {
     try {
       const [bannerRes, newsRes, settingsRes] = await Promise.all([
         axios.get(`${API_URL}/banners`),
@@ -67,15 +101,22 @@ export default function HomePage({ currentRole }: HomePageProps) {
       if (cdDate) setCountdownDate(cdDate.value);
       if (cdTitle) setCountdownTitle(cdTitle.value);
       if (cdImage) setCountdownImage(cdImage.value);
-
     } catch (error) {
-      console.error("Error fetching homepage data:", error);
+      console.error('Error fetching homepage data:', error);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    fetchHomePageData();
-  }, [fetchHomePageData]);
+    let isMounted = true;
+    const initFetch = async () => {
+      if (!isMounted) return;
+      await fetchHomePageData();
+    };
+    initFetch();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (banners.length <= 1) return;
@@ -100,21 +141,25 @@ export default function HomePage({ currentRole }: HomePageProps) {
     return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  const handleAddBannerImage = async () => {
-    const url = prompt('ใส่ลิงก์รูปภาพ (URL) เพื่อเพิ่มในสไลด์แบนเนอร์:');
-    if (url) {
-      try {
-        await axios.post(`${API_URL}/banners`, { imageUrl: url, isActive: true });
-        fetchHomePageData();
-      } catch (error) {
-        console.error(error);
-        alert('เพิ่มแบนเนอร์ไม่สำเร็จ');
-      }
+  // 🌟 1. อัปโหลดไฟล์รูปแบนเนอร์จากเครื่องเก็บลง Database
+  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const base64Image = await convertImageFileToBase64(file, 1100);
+      await axios.post(`${API_URL}/banners`, { imageUrl: base64Image, isActive: true });
+      await fetchHomePageData();
+      alert('อัปโหลดรูปแบนเนอร์ลงฐานข้อมูลสำเร็จ!');
+    } catch (error) {
+      console.error(error);
+      alert('เพิ่มแบนเนอร์ไม่สำเร็จ');
+    } finally {
+      if (bannerFileInputRef.current) bannerFileInputRef.current.value = '';
     }
   };
 
   const handleOpenAddNewsModal = () => {
-    setNewNewsData({ title: '', content: '', imageUrl: '' }); 
+    setNewNewsData({ title: '', content: '', imageUrl: '' });
     setIsAddNewsModalOpen(true);
   };
 
@@ -124,11 +169,11 @@ export default function HomePage({ currentRole }: HomePageProps) {
       await axios.post(`${API_URL}/news`, {
         title: newNewsData.title,
         content: newNewsData.content,
-        imageUrl: newNewsData.imageUrl || null 
+        imageUrl: newNewsData.imageUrl || null
       });
       alert('เพิ่มข่าวสำเร็จ!');
-      setIsAddNewsModalOpen(false); 
-      fetchHomePageData(); 
+      setIsAddNewsModalOpen(false);
+      await fetchHomePageData();
     } catch (error) {
       console.error(error);
       let errorMsg = 'เกิดข้อผิดพลาดในการเพิ่มข่าว';
@@ -143,7 +188,7 @@ export default function HomePage({ currentRole }: HomePageProps) {
     if (confirm('ยืนยันการลบข่าวประชาสัมพันธ์นี้ออกจากระบบถาวร?')) {
       try {
         await axios.delete(`${API_URL}/news/${id}`);
-        fetchHomePageData();
+        await fetchHomePageData();
       } catch (error) {
         console.error(error);
         alert('ลบข่าวไม่สำเร็จ');
@@ -152,10 +197,10 @@ export default function HomePage({ currentRole }: HomePageProps) {
   };
 
   const handleOpenEditCountdown = () => {
-    setEditCountdownData({ 
-      date: countdownDate, 
-      title: countdownTitle, 
-      imageUrl: countdownImage 
+    setEditCountdownData({
+      date: countdownDate,
+      title: countdownTitle,
+      imageUrl: countdownImage
     });
     setIsEditCountdownModalOpen(true);
   };
@@ -166,11 +211,11 @@ export default function HomePage({ currentRole }: HomePageProps) {
       await Promise.all([
         axios.post(`${API_URL}/settings`, { key: 'countdown_date', value: editCountdownData.date, description: 'วันที่เป้าหมาย' }),
         axios.post(`${API_URL}/settings`, { key: 'countdown_title', value: editCountdownData.title, description: 'ชื่อกิจกรรม' }),
-        axios.post(`${API_URL}/settings`, { key: 'countdown_image', value: editCountdownData.imageUrl, description: 'ลิงก์รูปภาพปก' })
+        axios.post(`${API_URL}/settings`, { key: 'countdown_image', value: editCountdownData.imageUrl, description: 'รูปภาพปก' })
       ]);
       alert('อัปเดตข้อมูลวิดเจ็ตสำเร็จ!');
       setIsEditCountdownModalOpen(false);
-      fetchHomePageData(); 
+      await fetchHomePageData();
     } catch (error) {
       console.error(error);
       alert('เปลี่ยนข้อมูลไม่สำเร็จ');
@@ -185,20 +230,29 @@ export default function HomePage({ currentRole }: HomePageProps) {
     <div className="home-container">
       <div className="hero-banner">
         {currentRole === 'admin' && (
-          <button onClick={handleAddBannerImage} className="btn-edit-banner">
-            <ImageIcon size={16} /> เพิ่มรูปลงแบนเนอร์
-          </button>
+          <>
+            <input
+              ref={bannerFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleBannerFileChange}
+              style={{ display: 'none' }}
+            />
+            <button onClick={() => bannerFileInputRef.current?.click()} className="btn-edit-banner">
+              <Upload size={16} /> อัปโหลดรูปลงแบนเนอร์
+            </button>
+          </>
         )}
-        
+
         {banners.length > 0 && (
           <img src={banners[currentSlide].imageUrl} alt="Banner Slide" className="hero-slide" key={currentSlide} />
         )}
-        
+
         {banners.length > 1 && (
           <div className="slider-dots">
             {banners.map((_, index) => (
-              <span 
-                key={index} 
+              <span
+                key={index}
                 className={`dot ${currentSlide === index ? 'active' : ''}`}
                 onClick={() => setCurrentSlide(index)}
               ></span>
@@ -208,17 +262,16 @@ export default function HomePage({ currentRole }: HomePageProps) {
       </div>
 
       <div className="home-grid">
-        
         <div className="main-feed">
           <div className="section-header-flex">
-            <h3 className="section-title"><Megaphone size={20} color="#8b0000"/> ข่าวสารและประชาสัมพันธ์</h3>
+            <h3 className="section-title"><Megaphone size={20} color="#8b0000" /> ข่าวสารและประชาสัมพันธ์</h3>
             {currentRole === 'admin' && (
               <button onClick={handleOpenAddNewsModal} className="btn-secondary" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <Plus size={16}/> เพิ่มข่าว
+                <Plus size={16} /> เพิ่มข่าว
               </button>
             )}
           </div>
-          
+
           <div className="pr-list">
             {displayedNews.map(news => (
               <div key={news.id} className="pr-card">
@@ -238,12 +291,12 @@ export default function HomePage({ currentRole }: HomePageProps) {
                 </div>
               </div>
             ))}
-            
+
             {newsList.length === 0 && <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px' }}>ไม่มีข่าวประชาสัมพันธ์ในขณะนี้</p>}
-            
+
             {newsList.length > 3 && (
-              <button 
-                className="btn-show-more" 
+              <button
+                className="btn-show-more"
                 onClick={() => setShowAllNews(!showAllNews)}
               >
                 {showAllNews ? 'ย่อลง (Show less)' : `ดูข่าวทั้งหมด (${newsList.length} ข่าว)`}
@@ -286,7 +339,7 @@ export default function HomePage({ currentRole }: HomePageProps) {
                 <p style={{ fontSize: '13px', color: '#6b7280', textAlign: 'center' }}>ไม่มีกิจกรรมในเดือนนี้</p>
               )}
             </div>
-            
+
             <div style={{ marginTop: '16px', textAlign: 'center', borderTop: '1px solid #f3f4f6', paddingTop: '12px' }}>
               <a href="https://activity.eng.cmu.ac.th/calendar" target="_blank" rel="noreferrer" style={{ fontSize: '13px', color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '500' }}>
                 ดูปฏิทินทั้งหมด <ExternalLink size={12} />
@@ -296,6 +349,7 @@ export default function HomePage({ currentRole }: HomePageProps) {
         </div>
       </div>
 
+      {/* 🌟 2. Modal เพิ่มข่าวประชาสัมพันธ์ (อัปโหลดรูปภาพเก็บใน Database) */}
       {isAddNewsModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -306,15 +360,34 @@ export default function HomePage({ currentRole }: HomePageProps) {
             <form onSubmit={submitNewNews} className="modal-form">
               <div className="form-field">
                 <label>หัวข้อข่าว *</label>
-                <input type="text" required className="form-input" placeholder="เช่น ประกาศรับสมัครสตาฟ" value={newNewsData.title} onChange={(e) => setNewNewsData({...newNewsData, title: e.target.value})} />
+                <input type="text" required className="form-input" placeholder="เช่น ประกาศรับสมัครสต๊าฟ" value={newNewsData.title} onChange={(e) => setNewNewsData({ ...newNewsData, title: e.target.value })} />
               </div>
               <div className="form-field">
-                <label>ลิงก์รูปภาพประกอบ (URL)</label>
-                <input type="url" className="form-input" placeholder="https://images.unsplash.com/... (ปล่อยว่างได้)" value={newNewsData.imageUrl} onChange={(e) => setNewNewsData({...newNewsData, imageUrl: e.target.value})} />
+                <label>อัปโหลดรูปภาพประกอบข่าว (บันทึกลง Database)</label>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', border: '2px dashed #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: '#f9fafb', color: '#374151', fontWeight: '600' }}>
+                  <Upload size={18} color="#8b0000" /> คลิกเลือกไฟล์รูปภาพจากเครื่อง
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const base64 = await convertImageFileToBase64(file, 800);
+                        setNewNewsData(prev => ({ ...prev, imageUrl: base64 }));
+                      }
+                    }}
+                  />
+                </label>
+                {newNewsData.imageUrl && (
+                  <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                    <img src={newNewsData.imageUrl} alt="News Preview" style={{ maxHeight: '130px', borderRadius: '8px', border: '1px solid #d1d5db' }} />
+                  </div>
+                )}
               </div>
               <div className="form-field">
                 <label>รายละเอียดเนื้อหาข่าว *</label>
-                <textarea required className="form-input" rows={4} style={{ resize: 'vertical' }} placeholder="พิมพ์รายละเอียดทั้งหมดที่นี่..." value={newNewsData.content} onChange={(e) => setNewNewsData({...newNewsData, content: e.target.value})}></textarea>
+                <textarea required className="form-input" rows={4} style={{ resize: 'vertical' }} placeholder="พิมพ์รายละเอียดทั้งหมดที่นี่..." value={newNewsData.content} onChange={(e) => setNewNewsData({ ...newNewsData, content: e.target.value })}></textarea>
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setIsAddNewsModalOpen(false)}>ยกเลิก</button>
@@ -325,6 +398,7 @@ export default function HomePage({ currentRole }: HomePageProps) {
         </div>
       )}
 
+      {/* 🌟 3. Modal ตั้งค่ากิจกรรมนับถอยหลัง (อัปโหลดรูปภาพปกเก็บใน Database) */}
       {isEditCountdownModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -335,15 +409,34 @@ export default function HomePage({ currentRole }: HomePageProps) {
             <form onSubmit={submitEditCountdown} className="modal-form">
               <div className="form-field">
                 <label>ชื่อกิจกรรม *</label>
-                <input type="text" required className="form-input" value={editCountdownData.title} onChange={(e) => setEditCountdownData({...editCountdownData, title: e.target.value})} />
+                <input type="text" required className="form-input" value={editCountdownData.title} onChange={(e) => setEditCountdownData({ ...editCountdownData, title: e.target.value })} />
               </div>
               <div className="form-field">
                 <label>วันที่เป้าหมาย (YYYY-MM-DD) *</label>
-                <input type="date" required className="form-input" value={editCountdownData.date} onChange={(e) => setEditCountdownData({...editCountdownData, date: e.target.value})} />
+                <input type="date" required className="form-input" value={editCountdownData.date} onChange={(e) => setEditCountdownData({ ...editCountdownData, date: e.target.value })} />
               </div>
               <div className="form-field">
-                <label>ลิงก์รูปภาพปก (URL) *</label>
-                <input type="url" required className="form-input" value={editCountdownData.imageUrl} onChange={(e) => setEditCountdownData({...editCountdownData, imageUrl: e.target.value})} />
+                <label>อัปโหลดรูปภาพปก (บันทึกลง Database) *</label>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', border: '2px dashed #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: '#f9fafb', color: '#374151', fontWeight: '600' }}>
+                  <Upload size={18} color="#8b0000" /> คลิกเลือกไฟล์รูปภาพปก
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const base64 = await convertImageFileToBase64(file, 700);
+                        setEditCountdownData(prev => ({ ...prev, imageUrl: base64 }));
+                      }
+                    }}
+                  />
+                </label>
+                {editCountdownData.imageUrl && (
+                  <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                    <img src={editCountdownData.imageUrl} alt="Countdown Preview" style={{ maxHeight: '130px', borderRadius: '8px', border: '1px solid #d1d5db' }} />
+                  </div>
+                )}
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setIsEditCountdownModalOpen(false)}>ยกเลิก</button>
@@ -359,7 +452,7 @@ export default function HomePage({ currentRole }: HomePageProps) {
           <div className="glass-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="glass-modal-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <span className="pr-date" style={{ margin: 0, fontWeight: '600' }}><Calendar size={14} color="#8b0000"/> {formatThaiDate(selectedNews.createdAt)}</span>
+                <span className="pr-date" style={{ margin: 0, fontWeight: '600' }}><Calendar size={14} color="#8b0000" /> {formatThaiDate(selectedNews.createdAt)}</span>
                 <button onClick={() => setSelectedNews(null)} className="btn-close"><X size={20} /></button>
               </div>
               <img src={selectedNews.imageUrl || DEFAULT_NEWS_IMG} alt={selectedNews.title} className="glass-modal-img" />
