@@ -11,23 +11,20 @@ services:
     restart: always
 
   backend:
-    build: ./backend
+    image: bestlm123/g05-backend:latest
     container_name: backend
     env_file:
       - ./backend/.env
     environment:
       - PORT=8000
       - DATABASE_URL=postgresql://postgres:password123@postgres:5432/project_G05
-      - FRONTEND_URL=${FRONTEND_URL} # เพิ่มบรรทัดนี้
+      - FRONTEND_URL=${FRONTEND_URL}
     depends_on:
       - postgres
     restart: always
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        - VITE_API_URL=${VITE_API_URL} # เพิ่มส่วนรับ args เข้ามา
+    image: bestlm123/g05-frontend:latest
     container_name: frontend
     ports:
       - "6007:80"
