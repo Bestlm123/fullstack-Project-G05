@@ -11,8 +11,8 @@ axios.defaults.withCredentials = true;
 
 const DEFAULT_EVENT_IMG = 'https://placehold.co/800x400/8b0000/ffffff?text=SMO+ENT+STAFF+RECRUITMENT';
 
-// บีบอัดและแปลงรูปภาพเป็น Base64 เพื่อเก็บใน Database
-const convertFileToBase64 = (file: File, maxDim = 650): Promise<string> => {
+// 🌟 บีบอัดรูปภาพให้ขนาดเล็กพิเศษ (ไม่เกิน 15-25 KB ต่อรูป) เพื่อป้องกัน Error 413 Payload Too Large
+const convertFileToBase64 = (file: File, maxDim = 420, quality = 0.55): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -32,8 +32,10 @@ const convertFileToBase64 = (file: File, maxDim = 650): Promise<string> => {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.72));
+          resolve(canvas.toDataURL('image/jpeg', quality));
         } else {
           resolve(String(e.target?.result || ''));
         }
@@ -49,9 +51,8 @@ const convertFileToBase64 = (file: File, maxDim = 650): Promise<string> => {
 const getStudentYear = (studentId: string): string => {
   const prefix = parseInt(studentId.substring(0, 2), 10);
   if (isNaN(prefix)) return '1';
-  const year = 69 - prefix + 1;
-  if (year <= 1) return '1';
-  if (year >= 4) return '4';
+  const year = 70 - prefix;
+  if (year <= 1) return 'มึงไปเรื่อยละ';
   return String(year);
 };
 
@@ -93,7 +94,6 @@ interface EventRole {
   eventId: number;
   roleName: string;
   description?: string;
-  allowedYears?: string[];
   lineQrUrl?: string;
   totalQuota: number;
   availableQuota: number;
@@ -133,7 +133,6 @@ interface RoleFormItem {
   roleName: string;
   totalQuota: number;
   description: string;
-  allowedYears: string[];
   lineQrUrl: string;
 }
 
@@ -175,7 +174,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
     allowedYears: ['1', '2', '3', '4'],
     qrCount: 1,
     mainLineQrUrl: '',
-    roles: [{ roleName: '', totalQuota: 10, description: '', allowedYears: ['1', '2', '3', '4'], lineQrUrl: '' }]
+    roles: [{ roleName: '', totalQuota: 10, description: '', lineQrUrl: '' }]
   });
 
   const [profileForm, setProfileForm] = useState({
@@ -196,7 +195,6 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
     message: ''
   });
 
-  // ฟังก์ชันดึงข้อมูลกิจกรรมและรายชื่อผู้สมัคร (ไม่ต้องห่อ useCallback เพื่อให้ React Compiler ทำงานได้สมบูรณ์)
   const refreshEventsAndApps = async () => {
     try {
       const evRes = await axios.get(`${API_URL}/events`);
@@ -220,7 +218,6 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
     }
   };
 
-  // โหลดโปรไฟล์ครั้งแรกเมื่อเข้าหน้าเว็บ
   useEffect(() => {
     let isMounted = true;
     const loadUserProfile = async () => {
@@ -251,7 +248,6 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
     };
   }, [studentId]);
 
-  // โหลดรายการกิจกรรมและใบสมัครแบบ Real-time
   useEffect(() => {
     let isMounted = true;
     const pollData = async () => {
@@ -291,6 +287,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
     }
   };
 
+  // 🌟 ตรวจสอบชั้นปีจากกิจกรรมใหญ่ที่เดียว (ev.allowedYears)
   const handleApplyRole = async (ev: StaffEvent, role: EventRole) => {
     if (!hasProfile) {
       setDetailEvent(null);
@@ -303,12 +300,12 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
       return;
     }
 
-    const allowed = role.allowedYears || ev.allowedYears || ['1', '2', '3', '4'];
+    const allowed = ev.allowedYears || ['1', '2', '3', '4'];
     if (!allowed.includes(currentStudentYear)) {
       setFeedbackModal({
         show: true,
         type: 'error',
-        message: `ฝ่ายนี้เปิดรับเฉพาะนักศึกษาชั้นปีที่ ${allowed.join(', ')} (รหัสของคุณคือชั้นปีที่ ${currentStudentYear})`
+        message: `กิจกรรมนี้เปิดรับเฉพาะนักศึกษาชั้นปีที่ ${allowed.join(', ')} (รหัสของคุณคือชั้นปีที่ ${currentStudentYear})`
       });
       return;
     }
@@ -353,7 +350,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
       allowedYears: ['1', '2', '3', '4'],
       qrCount: 1,
       mainLineQrUrl: '',
-      roles: [{ roleName: '', totalQuota: 10, description: '', allowedYears: ['1', '2', '3', '4'], lineQrUrl: '' }]
+      roles: [{ roleName: '', totalQuota: 10, description: '', lineQrUrl: '' }]
     });
     setIsEventModalOpen(true);
   };
@@ -373,10 +370,9 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
             roleName: r.roleName,
             totalQuota: r.totalQuota,
             description: r.description || '',
-            allowedYears: r.allowedYears || ev.allowedYears || ['1', '2', '3', '4'],
             lineQrUrl: r.lineQrUrl || ''
           }))
-        : [{ roleName: '', totalQuota: 10, description: '', allowedYears: ['1', '2', '3', '4'], lineQrUrl: '' }]
+        : [{ roleName: '', totalQuota: 10, description: '', lineQrUrl: '' }]
     });
     setIsEventModalOpen(true);
   };
@@ -411,7 +407,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
       setIsEventModalOpen(false);
       await refreshEventsAndApps();
     } catch (error: unknown) {
-      let msg = 'บันทึกกิจกรรมไม่สำเร็จ';
+      let msg = 'บันทึกกิจกรรมไม่สำเร็จ (หากไฟล์รูปใหญ่เกินไป กรุณาลองเลือกไฟล์ใหม่)';
       if (axios.isAxiosError(error) && error.response?.data?.error) msg = error.response.data.error;
       setFeedbackModal({ show: true, type: 'error', message: msg });
     }
@@ -422,16 +418,6 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
       const exists = prev.allowedYears.includes(year);
       const nextYears = exists ? prev.allowedYears.filter(y => y !== year) : [...prev.allowedYears, year].sort();
       return { ...prev, allowedYears: nextYears };
-    });
-  };
-
-  const toggleRoleAllowedYear = (roleIdx: number, year: string) => {
-    setEventForm(prev => {
-      const updated = [...prev.roles];
-      const current = updated[roleIdx].allowedYears || ['1', '2', '3', '4'];
-      const next = current.includes(year) ? current.filter(y => y !== year) : [...current, year].sort();
-      updated[roleIdx] = { ...updated[roleIdx], allowedYears: next };
-      return { ...prev, roles: updated };
     });
   };
 
@@ -552,7 +538,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
 
       {/* หน้ารายการกิจกรรมทั้งหมด */}
       {subTab === 'events' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
           {eventsList.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', backgroundColor: 'white', padding: '60px 20px', borderRadius: '12px', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb' }}>
               ยังไม่มีกิจกรรมที่เปิดรับสมัครสต๊าฟในขณะนี้
@@ -673,9 +659,9 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
               </button>
             </div>
 
-            <div style={{ padding: '28px' }}>
+            <div style={{ padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
-                <h2 style={{ margin: 0, fontSize: '24px', color: '#111827' }}>{detailEvent.title}</h2>
+                <h2 style={{ margin: 0, fontSize: '22px', color: '#111827' }}>{detailEvent.title}</h2>
                 <span style={{ backgroundColor: '#fef2f2', color: '#8b0000', padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold' }}>
                   รับเฉพาะชั้นปีที่: {(detailEvent.allowedYears || ['1', '2', '3', '4']).join(', ')}
                 </span>
@@ -691,25 +677,23 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
 
               {(() => {
                 const myAppInEvent = myApplications.find(a => a.eventId === detailEvent.id);
+                const eventYears = detailEvent.allowedYears || ['1', '2', '3', '4'];
+                const isYearEligible = eventYears.includes(currentStudentYear);
+
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     {(detailEvent.roles || []).map(role => {
                       const isMyRole = myAppInEvent?.roleId === role.id;
                       const alreadyInAnotherRole = Boolean(myAppInEvent && myAppInEvent.roleId !== role.id);
                       const isFull = role.availableQuota <= 0;
-                      const roleYears = role.allowedYears || detailEvent.allowedYears || ['1', '2', '3', '4'];
-                      const isYearEligible = roleYears.includes(currentStudentYear);
 
                       return (
                         <div key={role.id} style={{ border: isMyRole ? '2px solid #16a34a' : '1px solid #e5e7eb', borderRadius: '12px', padding: '18px', backgroundColor: isMyRole ? '#f0fdf4' : 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                          <div style={{ flex: '1 1 300px' }}>
+                          <div style={{ flex: '1 1 280px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
                               <strong style={{ fontSize: '17px', color: '#111827' }}>ฝ่าย{role.roleName}</strong>
                               <span style={{ fontSize: '12px', backgroundColor: isFull ? '#fee2e2' : '#dcfce7', color: isFull ? '#991b1b' : '#166534', padding: '3px 10px', borderRadius: '999px', fontWeight: 'bold' }}>
                                 สมัครแล้ว {role.totalQuota - role.availableQuota}/{role.totalQuota} คน (เหลือ {role.availableQuota})
-                              </span>
-                              <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                                • รับชั้นปีที่ {roleYears.join(', ')}
                               </span>
                             </div>
                             <div style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.5' }}>
@@ -753,7 +737,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
                                   {alreadyInAnotherRole
                                     ? 'สมัครฝ่ายอื่นไปแล้ว'
                                     : !isYearEligible
-                                    ? `รับเฉพาะปี ${roleYears.join(',')}`
+                                    ? `รับเฉพาะปี ${eventYears.join(',')}`
                                     : isFull
                                     ? 'โควต้าเต็ม'
                                     : 'กดสมัครฝ่ายนี้'}
@@ -772,7 +756,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
         </div>
       )}
 
-      {/* หน้าต่างยืนยันการเป็นสต๊าฟ + แสดง QR Code เข้ากลุ่มไลน์ (1 หรือ 2 กลุ่ม) */}
+      {/* หน้าต่างยืนยันการเป็นสต๊าฟ + แสดง QR Code เข้ากลุ่มไลน์ */}
       {confirmationModal && confirmationModal.show && (
         <div className="modal-overlay" style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div className="modal-content" style={{ maxWidth: '620px', width: '94%', textAlign: 'center', padding: '32px 24px', borderRadius: '16px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -834,7 +818,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
               <strong style={{ fontSize: '16px' }}>เลือกกิจกรรมเพื่อดู Dashboard:</strong>
               <select
                 className="form-input"
-                style={{ minWidth: '260px' }}
+                style={{ minWidth: '240px' }}
                 value={dashboardEvent?.id || ''}
                 onChange={e => {
                   const found = eventsList.find(ev => ev.id === Number(e.target.value)) || null;
@@ -861,7 +845,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
             const totalAppliedAll = eventApps.length;
 
             return (
-              <div style={{ backgroundColor: 'white', padding: '28px', borderRadius: '14px', border: '1px solid #e5e7eb' }}>
+              <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '14px', border: '1px solid #e5e7eb' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', borderBottom: '2px solid #f3f4f6', paddingBottom: '20px', marginBottom: '24px' }}>
                   <div>
                     <h3 style={{ margin: '0 0 6px 0', fontSize: '22px', color: '#8b0000' }}>📊 Dashboard: {currentEv.title}</h3>
@@ -982,7 +966,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
 
       {/* ฟอร์มข้อมูลโปรไฟล์สต๊าฟ */}
       {subTab === 'profile' && (
-        <div style={{ maxWidth: '750px', margin: '0 auto', backgroundColor: 'white', padding: '32px', borderRadius: '14px', border: '1px solid #e5e7eb' }}>
+        <div style={{ maxWidth: '750px', margin: '0 auto', backgroundColor: 'white', padding: '28px', borderRadius: '14px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '12px' }}>
             <UserCheck size={24} color="#8b0000" />
             <h3 style={{ margin: 0, fontSize: '20px' }}>ข้อมูลส่วนตัวสำหรับผู้สมัครสต๊าฟคณะวิศวะฯ</h3>
@@ -1041,10 +1025,12 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
         </div>
       )}
 
-      {/* Modal ตั้งกิจกรรม / แก้ไขกิจกรรมของ Admin */}
+      {/* =====================================================================
+          🌟 Modal ตั้งกิจกรรม / แก้ไขกิจกรรมของ Admin (เลือกชั้นปีแค่ที่เดียวตรงกิจกรรมใหญ่)
+         ===================================================================== */}
       {isEventModalOpen && isAdmin && (
         <div className="modal-overlay" style={{ zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.65)' }}>
-          <div className="modal-content" style={{ maxWidth: '780px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="modal-content" style={{ maxWidth: '760px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="modal-header">
               <h3>{editingEventId ? '✏️ แก้ไขกิจกรรมรับสมัครสต๊าฟ' : '✨ ตั้งกิจกรรมรับสมัครสต๊าฟใหม่'}</h3>
               <button className="btn-close" onClick={() => setIsEventModalOpen(false)}><X size={20} /></button>
@@ -1067,7 +1053,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const b64 = await convertFileToBase64(file, 750);
+                        const b64 = await convertFileToBase64(file, 420, 0.55);
                         setEventForm(prev => ({ ...prev, imageUrl: b64 }));
                       }
                     }}
@@ -1075,7 +1061,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
                 </label>
                 {eventForm.imageUrl && (
                   <div style={{ marginTop: '8px', textAlign: 'center' }}>
-                    <img src={eventForm.imageUrl} alt="Event Preview" style={{ maxHeight: '140px', borderRadius: '8px', border: '1px solid #d1d5db' }} />
+                    <img src={eventForm.imageUrl} alt="Event Preview" style={{ maxHeight: '130px', borderRadius: '8px', border: '1px solid #d1d5db' }} />
                   </div>
                 )}
               </div>
@@ -1085,8 +1071,9 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
                 <textarea required rows={3} className="form-input" placeholder="ระบุรายละเอียดกิจกรรม วันเวลา สถานที่..." value={eventForm.description} onChange={e => setEventForm({ ...eventForm, description: e.target.value })} />
               </div>
 
+              {/* 🌟 กำหนดชั้นปีที่จุดนี้จุดเดียว ทุกฝ่ายจะยึดตามนี้ทั้งหมด */}
               <div className="form-field">
-                <label>กำหนดชั้นปีที่มีสิทธิ์สมัครเป็นสต๊าฟได้ (คณะวิศวกรรมศาสตร์) *</label>
+                <label>กำหนดชั้นปีที่มีสิทธิ์สมัครเป็นสต๊าฟได้ (ใช้ร่วมกันทุกฝ่ายในกิจกรรมนี้) *</label>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '6px' }}>
                   {['1', '2', '3', '4'].map(yr => {
                     const checked = eventForm.allowedYears.includes(yr);
@@ -1149,7 +1136,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const b64 = await convertFileToBase64(file, 450);
+                          const b64 = await convertFileToBase64(file, 260, 0.55);
                           setEventForm(prev => ({ ...prev, mainLineQrUrl: b64 }));
                         }
                       }}
@@ -1157,12 +1144,13 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
                   </label>
                   {eventForm.mainLineQrUrl && (
                     <div style={{ marginTop: '8px' }}>
-                      <img src={eventForm.mainLineQrUrl} alt="Main QR" style={{ width: '90px', height: '90px', objectFit: 'contain', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white' }} />
+                      <img src={eventForm.mainLineQrUrl} alt="Main QR" style={{ width: '85px', height: '85px', objectFit: 'contain', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white' }} />
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* รายการฝ่าย (ไม่มีปุ่มเลือกชั้นปีซ้ำซ้อนแล้ว) */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <label style={{ fontWeight: 'bold', fontSize: '16px', color: '#8b0000' }}>ฝ่ายที่ต้องการรับสมัคร ({eventForm.roles.length} ฝ่าย) *</label>
@@ -1171,7 +1159,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
                     onClick={() =>
                       setEventForm(prev => ({
                         ...prev,
-                        roles: [...prev.roles, { roleName: '', totalQuota: 5, description: '', allowedYears: prev.allowedYears, lineQrUrl: '' }]
+                        roles: [...prev.roles, { roleName: '', totalQuota: 5, description: '', lineQrUrl: '' }]
                       }))
                     }
                     style={{ backgroundColor: '#8b0000', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}
@@ -1225,7 +1213,7 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
                         )}
                       </div>
 
-                      <div style={{ marginBottom: '10px' }}>
+                      <div style={{ marginBottom: eventForm.qrCount === 2 ? '10px' : '0' }}>
                         <label style={{ fontSize: '13px', fontWeight: 'bold' }}>รายละเอียดว่าฝ่ายนี้ต้องทำอะไรบ้าง *</label>
                         <input
                           required
@@ -1241,52 +1229,28 @@ export default function StaffRecruitmentTab({ currentUser }: StaffRecruitmentTab
                         />
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#4b5563' }}>ชั้นปีที่รับในฝ่ายนี้:</span>
-                          {['1', '2', '3', '4'].map(yr => {
-                            const active = (r.allowedYears || ['1', '2', '3', '4']).includes(yr);
-                            return (
-                              <button
-                                type="button"
-                                key={yr}
-                                onClick={() => toggleRoleAllowedYear(idx, yr)}
-                                style={{
-                                  padding: '3px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold',
-                                  border: active ? '1px solid #8b0000' : '1px solid #d1d5db',
-                                  backgroundColor: active ? '#8b0000' : 'white',
-                                  color: active ? 'white' : '#6b7280'
-                                }}
-                              >
-                                ปี {yr}
-                              </button>
-                            );
-                          })}
+                      {eventForm.qrCount === 2 && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', backgroundColor: 'white', fontSize: '12px', fontWeight: 'bold' }}>
+                            <Upload size={14} color="#8b0000" /> {r.lineQrUrl ? 'เปลี่ยน QR ฝ่ายนี้' : 'อัปโหลด QR กลุ่มฝ่ายนี้'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const b64 = await convertFileToBase64(file, 260, 0.55);
+                                  const updated = [...eventForm.roles];
+                                  updated[idx].lineQrUrl = b64;
+                                  setEventForm({ ...eventForm, roles: updated });
+                                }
+                              }}
+                            />
+                          </label>
+                          {r.lineQrUrl && <img src={r.lineQrUrl} alt="Role QR" style={{ width: '38px', height: '38px', borderRadius: '4px', border: '1px solid #d1d5db' }} />}
                         </div>
-
-                        {eventForm.qrCount === 2 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', backgroundColor: 'white', fontSize: '12px', fontWeight: 'bold' }}>
-                              <Upload size={14} color="#8b0000" /> {r.lineQrUrl ? 'เปลี่ยน QR ฝ่ายนี้' : 'อัปโหลด QR กลุ่มฝ่ายนี้'}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                style={{ display: 'none' }}
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    const b64 = await convertFileToBase64(file, 450);
-                                    const updated = [...eventForm.roles];
-                                    updated[idx].lineQrUrl = b64;
-                                    setEventForm({ ...eventForm, roles: updated });
-                                  }
-                                }}
-                              />
-                            </label>
-                            {r.lineQrUrl && <img src={r.lineQrUrl} alt="Role QR" style={{ width: '36px', height: '36px', borderRadius: '4px', border: '1px solid #d1d5db' }} />}
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
