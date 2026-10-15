@@ -12,8 +12,8 @@ const app = express();
 // 🌟 FIX: ตั้งค่า CORS ให้รองรับการส่ง Session Cookie ข้ามพอร์ต
 // ==========================================
 app.use(cors({
-  origin: 'http://localhost:5173', // URL ของหน้าบ้านที่อนุญาต
-  credentials: true,               // อนุญาตให้รับส่ง Cookie (Session)
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
 }));
 
 app.use(helmet());

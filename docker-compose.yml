@@ -1,35 +1,35 @@
-version: '3.8'
 services:
-  # 1. Database Service
   postgres:
     image: postgres:15
+    container_name: postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: project_G05
-    # เอา ports ออกไปเลย
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: always
 
-  # 2. Backend Service
   backend:
     build: ./backend
-    # เอา ports ออกไปเลย ให้คุยกันภายใน
+    container_name: backend
     env_file:
       - ./backend/.env
     environment:
       - PORT=8000
       - DATABASE_URL=postgresql://postgres:password123@postgres:5432/project_G05
+      - FRONTEND_URL=${FRONTEND_URL} # เพิ่มบรรทัดนี้
     depends_on:
       - postgres
     restart: always
 
-  # 3. Frontend Service
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_URL=${VITE_API_URL} # เพิ่มส่วนรับ args เข้ามา
+    container_name: frontend
     ports:
-      # แก้เป็น 6007 เพื่อให้ตรงกับเครื่อง g07
       - "6007:80"
     depends_on:
       - backend
