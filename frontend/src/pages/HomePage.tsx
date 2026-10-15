@@ -360,7 +360,7 @@ export default function HomePage({ currentRole }: HomePageProps) {
             <form onSubmit={submitNewNews} className="modal-form">
               <div className="form-field">
                 <label>หัวข้อข่าว *</label>
-                <input type="text" required className="form-input" placeholder="เช่น ประกาศรับสมัครสต๊าฟ" value={newNewsData.title} onChange={(e) => setNewNewsData({ ...newNewsData, title: e.target.value })} />
+                <input type="text" required className="form-input" placeholder="เช่น ประกาศรับสมัครสตาฟ" value={newNewsData.title} onChange={(e) => setNewNewsData({ ...newNewsData, title: e.target.value })} />
               </div>
               <div className="form-field">
                 <label>อัปโหลดรูปภาพประกอบข่าว (บันทึกลง Database)</label>

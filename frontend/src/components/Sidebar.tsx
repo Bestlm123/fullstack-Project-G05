@@ -137,7 +137,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
               cursor: 'pointer', fontWeight: '500', width: '100%', textAlign: 'left', transition: 'all 0.2s'
             }}
           >
-            <Users size={20} /> สมัครสต๊าฟกิจกรรม
+            <Users size={20} /> สมัครสตาฟกิจกรรม
           </button>
 
           <div style={{ padding: '0 16px', marginTop: '24px', marginBottom: '4px', fontSize: '12px', fontWeight: 'bold', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
