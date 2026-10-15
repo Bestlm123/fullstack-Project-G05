@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:15
     container_name: postgres
+    ports:
+      - "5407:5432" # เปิดพอร์ต 5407 ออกมาด้านนอกสำหรับเชื่อมต่อผ่าน DBeaver
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password123
@@ -11,7 +13,7 @@ services:
     restart: always
 
   backend:
-    image: bestlm123/g05-backend:latest
+    image: bestlm123/g05-backend:latest # ดึง Image ล่าสุดจาก Docker Hub
     container_name: backend
     env_file:
       - ./backend/.env
@@ -24,7 +26,7 @@ services:
     restart: always
 
   frontend:
-    image: bestlm123/g05-frontend:latest
+    image: bestlm123/g05-frontend:latest # ดึง Image ล่าสุดจาก Docker Hub
     container_name: frontend
     ports:
       - "6007:80"

@@ -3,7 +3,7 @@ name: CI/CD Pipeline (Build & Auto Deploy)
 on:
   push:
     branches:
-      - main # ทำงานเมื่อมีการ Push เข้ากิ่ง main
+      - main
 
 jobs:
   # ==========================================
@@ -26,7 +26,6 @@ jobs:
         with:
           context: ./backend
           push: true
-          # เปลี่ยนชื่อเป็น g05-backend ให้ตรงกับโปรเจกต์
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/g05-backend:latest
 
       - name: Build and Push Frontend
@@ -34,28 +33,25 @@ jobs:
         with:
           context: ./frontend
           push: true
-          # เปลี่ยนชื่อเป็น g05-frontend ให้ตรงกับโปรเจกต์
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/g05-frontend:latest
+          build-args: |
+            VITE_API_URL=https://fsg07.cpecmu.com
 
   # ==========================================
   # ส่วนที่ 2: ดึงโค้ดและ Image มารันบนเซิร์ฟเวอร์ g07
   # ==========================================
   deploy-to-server:
-    needs: build-and-push # รอให้ส่วนที่ 1 สร้างเสร็จและดันขึ้น Hub ก่อน
-    runs-on: self-hosted  # ส่งคำสั่งไปที่ g07
-    
+    needs: build-and-push
+    runs-on: self-hosted
+
     steps:
       - name: Pull and Restart on Server
         run: |
           cd ~/fullstack-Project-G05
-          
-          # 1. ดึงโค้ดโปรเจกต์ล่าสุดมาอัปเดตไฟล์ (เช่น docker-compose.yml หรือ .env)
           git fetch --all
           git reset --hard origin/main
-          
-          # 2. ดึง Docker Image ก้อนใหม่จาก Docker Hub มาลงเครื่อง (ใช้ตัวแปร Secrets ได้เลย)
+
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/g05-backend:latest
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/g05-frontend:latest
-          
-          # 3. สั่งให้ระบบปิดกล่องเก่า แล้วเปิดกล่องใหม่ด้วย Image ล่าสุด
+
           docker compose up -d
