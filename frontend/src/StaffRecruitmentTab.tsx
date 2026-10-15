@@ -49,7 +49,7 @@ const convertFileToBase64 = (file: File, maxDim = 650): Promise<string> => {
 const getStudentYear = (studentId: string): string => {
   const prefix = parseInt(studentId.substring(0, 2), 10);
   if (isNaN(prefix)) return '1';
-  const year = 69 - prefix;
+  const year = 69 - prefix + 1;
   if (year <= 1) return '1';
   if (year >= 4) return '4';
   return String(year);
