@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Clock, QrCode, X, ScanLine, Ban, Camera, CameraOff } from 'lucide-react';
+import { Clock, QrCode, X, ScanLine, Ban, Camera, CameraOff, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const API_URL = `${BASE_URL}/api`;
@@ -38,7 +38,20 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
   const [selectedQr, setSelectedQr] = useState<{ qrValue: string; displayCode: string } | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
-  const fetchData = async () => {
+  const [popupModal, setPopupModal] = useState<{ show: boolean; type: 'success' | 'error'; message: string }>({
+    show: false,
+    type: 'success',
+    message: ''
+  });
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; title: string; message: string; onConfirm: () => void }>({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  // 🌟 ห่อด้วย useCallback และระบุ dependencies ให้ครบถ้วน
+  const fetchData = useCallback(async () => {
     try {
       const [borrowRes, itemRes] = await Promise.all([
         axios.get(`${API_URL}/borrowings`),
@@ -55,7 +68,7 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
     } catch (error) {
       console.error('Fetch history error:', error);
     }
-  };
+  }, [currentRole, currentUserId]);
 
   useEffect(() => {
     let isMounted = true;
@@ -69,9 +82,8 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
       isMounted = false;
       clearInterval(interval);
     };
-  }, [currentRole, currentUserId]);
+  }, [fetchData]);
 
-  // ระบบเปิดกล้องสแกน QR Code สำหรับ Admin ในหน้าประวัติยืม-คืน
   useEffect(() => {
     if (!isCameraOpen || currentRole !== 'admin') return;
 
@@ -95,14 +107,14 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
 
             try {
               const response = await axios.post(`${API_URL}/borrowings/scan`, { qrData: decodedText });
-              alert(`✅ ${response.data.message}`);
+              setPopupModal({ show: true, type: 'success', message: response.data.message });
               await fetchData();
             } catch (error: unknown) {
               let errMsg = 'เกิดข้อผิดพลาดในการสแกน';
               if (axios.isAxiosError(error)) {
                 errMsg = error.response?.data?.error || error.response?.data?.message || error.message;
               }
-              alert(`❌ ${errMsg}`);
+              setPopupModal({ show: true, type: 'error', message: errMsg });
             }
           },
           () => {}
@@ -110,7 +122,7 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
       } catch (err) {
         console.error(err);
         setIsCameraOpen(false);
-        alert('ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการเข้าถึงกล้องบนเบราว์เซอร์');
+        setPopupModal({ show: true, type: 'error', message: 'ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการเข้าถึงกล้องบนเบราว์เซอร์' });
       }
     };
 
@@ -122,7 +134,7 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
         html5QrCode.stop().catch(() => {});
       }
     };
-  }, [isCameraOpen, currentRole]);
+  }, [isCameraOpen, currentRole, fetchData]);
 
   const getAssetDetails = (assetId: string) => {
     return assets.find(a => a.id === assetId) || { name: 'ไม่ทราบชื่ออุปกรณ์', category: 'Unknown' };
@@ -139,44 +151,58 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
     return new Date(dateStr).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
   };
 
-  const handleAdminScan = async (record: Borrowing) => {
+  const handleAdminScan = (record: Borrowing) => {
     const entCode = getEntBillCode(record);
     const qrPayload = `REQ-${record.id.toString().padStart(4, '0')}|${record.studentId}|${entCode}`;
 
-    if (confirm(`ยืนยันการสแกนรายการรหัส: ${entCode}\n(${record.status === 'pending' ? 'ส่งมอบอุปกรณ์ให้ผู้ยืม' : 'รับคืนอุปกรณ์เข้าคลัง'})?`)) {
-      try {
-        const response = await axios.post(`${API_URL}/borrowings/scan`, { qrData: qrPayload });
-        alert(`✅ ${response.data.message}`);
-        await fetchData();
-      } catch (error: unknown) {
-        let errMsg = 'เกิดข้อผิดพลาดในการสแกน';
-        if (axios.isAxiosError(error)) {
-          errMsg = error.response?.data?.error || error.response?.data?.message || error.message;
+    setConfirmModal({
+      show: true,
+      title: `ยืนยันการสแกนรหัส ${entCode}`,
+      message: record.status === 'pending'
+        ? 'ยืนยันการส่งมอบอุปกรณ์ให้ผู้ยืม (เปลี่ยนสถานะเป็นกำลังยืม) ใช่หรือไม่?'
+        : 'ยืนยันการรับคืนอุปกรณ์เข้าคลัง (คืนโควต้าสต๊อก) ใช่หรือไม่?',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, show: false }));
+        try {
+          const response = await axios.post(`${API_URL}/borrowings/scan`, { qrData: qrPayload });
+          setPopupModal({ show: true, type: 'success', message: response.data.message });
+          await fetchData();
+        } catch (error: unknown) {
+          let errMsg = 'เกิดข้อผิดพลาดในการสแกน';
+          if (axios.isAxiosError(error)) {
+            errMsg = error.response?.data?.error || error.response?.data?.message || error.message;
+          }
+          setPopupModal({ show: true, type: 'error', message: errMsg });
         }
-        alert(`❌ ${errMsg}`);
       }
-    }
+    });
   };
 
-  const handleUserCancel = async (record: Borrowing) => {
+  const handleUserCancel = (record: Borrowing) => {
     const entCode = getEntBillCode(record);
-    if (!confirm(`ยืนยันการยกเลิกคำขอยืมรหัส ${entCode} ใช่หรือไม่?`)) return;
-
-    try {
-      try {
-        await axios.post(`${API_URL}/borrowings/cancel`, { borrowingId: record.id });
-      } catch {
-        await axios.post(`${API_URL}/borrowings/return`, { borrowingId: record.id });
+    setConfirmModal({
+      show: true,
+      title: 'ยืนยันการยกเลิกคำขอยืม',
+      message: `คุณต้องการยกเลิกคำขอยืมรหัส ${entCode} ใช่หรือไม่?`,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, show: false }));
+        try {
+          try {
+            await axios.post(`${API_URL}/borrowings/cancel`, { borrowingId: record.id });
+          } catch {
+            await axios.post(`${API_URL}/borrowings/return`, { borrowingId: record.id });
+          }
+          setPopupModal({ show: true, type: 'success', message: `ยกเลิกคำขอยืมรหัส ${entCode} เรียบร้อยแล้ว` });
+          await fetchData();
+        } catch (error: unknown) {
+          let errMsg = 'ไม่สามารถยกเลิกรายการได้';
+          if (axios.isAxiosError(error)) {
+            errMsg = error.response?.data?.error || errMsg;
+          }
+          setPopupModal({ show: true, type: 'error', message: errMsg });
+        }
       }
-      alert(`✅ ยกเลิกคำขอยืมรหัส ${entCode} เรียบร้อยแล้ว`);
-      await fetchData();
-    } catch (error: unknown) {
-      let errMsg = 'ไม่สามารถยกเลิกรายการได้';
-      if (axios.isAxiosError(error)) {
-        errMsg = error.response?.data?.error || errMsg;
-      }
-      alert(`❌ ${errMsg}`);
-    }
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -193,7 +219,6 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
 
   return (
     <div style={{ paddingBottom: '40px' }}>
-      {/* 🌟 CSS สลับแสดงตารางบนคอมพิวเตอร์ และแสดงเป็นการ์ดสวยๆ บนมือถือ เพื่อไม่ให้ข้อมูลตกขอบ */}
       <style>
         {`
           .history-desktop-table {
@@ -214,6 +239,45 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
           }
         `}
       </style>
+
+      {/* Pop-up แจ้งผลการทำงาน */}
+      {popupModal.show && (
+        <div className="modal-overlay" style={{ zIndex: 1200, backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <div className="modal-content" style={{ maxWidth: '400px', width: '92%', textAlign: 'center', padding: '32px 24px' }}>
+            {popupModal.type === 'success' ? (
+              <CheckCircle size={56} color="#16a34a" style={{ margin: '0 auto 14px' }} />
+            ) : (
+              <XCircle size={56} color="#dc2626" style={{ margin: '0 auto 14px' }} />
+            )}
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: popupModal.type === 'success' ? '#166534' : '#991b1b' }}>
+              {popupModal.type === 'success' ? 'ดำเนินการสำเร็จ' : 'แจ้งเตือน'}
+            </h3>
+            <p style={{ color: '#4b5563', marginBottom: '24px', fontSize: '15px' }}>{popupModal.message}</p>
+            <button className="btn-primary" style={{ width: '100%', padding: '10px' }} onClick={() => setPopupModal({ ...popupModal, show: false })}>
+              ตกลง
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pop-up ยืนยันการทำงาน */}
+      {confirmModal.show && (
+        <div className="modal-overlay" style={{ zIndex: 1200, backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <div className="modal-content" style={{ maxWidth: '420px', width: '92%', textAlign: 'center', padding: '32px 24px' }}>
+            <AlertTriangle size={56} color="#d97706" style={{ margin: '0 auto 14px' }} />
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#111827' }}>{confirmModal.title}</h3>
+            <p style={{ color: '#4b5563', marginBottom: '24px', fontSize: '15px', lineHeight: 1.5 }}>{confirmModal.message}</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}>
+                ยกเลิก
+              </button>
+              <button className="btn-primary" style={{ flex: 1, padding: '10px' }} onClick={confirmModal.onConfirm}>
+                ยืนยัน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
@@ -250,7 +314,6 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
         </div>
       )}
 
-      {/* 1. มุมมองตารางสำหรับหน้าจอคอมพิวเตอร์ (Desktop) */}
       <div className="table-card history-desktop-table">
         <table style={{ width: '100%' }}>
           <thead>
@@ -345,7 +408,6 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
         </table>
       </div>
 
-      {/* 2. มุมมองการ์ดสำหรับหน้าจอมือถือ (Mobile Card Layout - ไม่ตกขอบ 100%) */}
       <div className="history-mobile-cards">
         {borrowings.length === 0 ? (
           <div style={{ backgroundColor: 'white', padding: '40px 20px', borderRadius: '12px', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb' }}>
