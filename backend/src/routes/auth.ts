@@ -161,7 +161,7 @@ router.get('/login/cmu', passport.authenticate('cmu-oauth', {
 router.get('/callback', 
   passport.authenticate('cmu-oauth', { failureRedirect: '/login-failed' }),
   (req, res) => {
-    res.redirect('http://localhost:5173/'); 
+    res.redirect(process.env.FRONTEND_URL || 'http://localhost:5173');
   }
 );
 
