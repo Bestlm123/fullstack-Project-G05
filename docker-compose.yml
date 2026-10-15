@@ -7,8 +7,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: project_G05
-    ports:
-      - "5432:5432"
+    # เอา ports ออกไปเลย
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: always
@@ -16,8 +15,7 @@ services:
   # 2. Backend Service
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    # เอา ports ออกไปเลย ให้คุยกันภายใน
     env_file:
       - ./backend/.env
     environment:
@@ -31,7 +29,8 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "80:80"
+      # แก้เป็น 6007 เพื่อให้ตรงกับเครื่อง g07
+      - "6007:80"
     depends_on:
       - backend
     restart: always
