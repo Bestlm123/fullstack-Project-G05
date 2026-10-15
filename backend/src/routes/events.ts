@@ -8,7 +8,6 @@ const router = Router();
 
 interface RoleExtraMeta {
   description?: string;
-  allowedYears?: string[];
   lineQrUrl?: string;
 }
 
@@ -22,18 +21,15 @@ interface EventExtraMeta {
 
 const getEventMetaKey = (eventId: number) => `EVENT_META_${eventId}`;
 
-// คำนวณชั้นปีจากรหัสนักศึกษา 2 หลักแรก (ปีการศึกษา 2569: 69=ปี1, 68=ปี2, 67=ปี3, 66=ปี4)
 const getStudentYearFromId = (studentId: string): string => {
   const prefix = parseInt(studentId.substring(0, 2), 10);
   if (isNaN(prefix)) return '1';
-  const currentThaiYearShort = 69;
+  const currentThaiYearShort = 70;
   const year = currentThaiYearShort - prefix;
-  if (year <= 1) return '1';
-  if (year >= 4) return '4';
+  if (year <= 1) return 'มึงไปเรื่อยละ';
   return String(year);
 };
 
-// ตรวจสอบว่าเป็นนักศึกษาคณะวิศวกรรมศาสตร์ (รหัสคณะ 06 หรือ faculty Engineering)
 const isEngineeringStudent = (studentId: string, faculty?: string, role?: string): boolean => {
   if (role === 'admin') return true;
   const facLower = (faculty || '').toLowerCase();
@@ -42,7 +38,7 @@ const isEngineeringStudent = (studentId: string, faculty?: string, role?: string
   return false;
 };
 
-// 1. GET /events (ดึงรายการกิจกรรมทั้งหมด + ข้อมูลรูปภาพ/ชั้นปี/QR Code จาก DB)
+// 1. GET /events
 router.get(['/', '/events'], async (req, res) => {
   try {
     const allEvents = await db.select().from(events);
@@ -68,7 +64,6 @@ router.get(['/', '/events'], async (req, res) => {
           return {
             ...r,
             description: rExtra.description || '',
-            allowedYears: rExtra.allowedYears || extra.allowedYears || ['1', '2', '3', '4'],
             lineQrUrl: rExtra.lineQrUrl || '',
             appliedCount
           };
@@ -91,7 +86,7 @@ router.get(['/', '/events'], async (req, res) => {
   }
 });
 
-// 2. GET /applications (ดึงรายชื่อสต๊าฟทั้งหมดพร้อมข้อมูลโปรไฟล์สำหรับหน้า Dashboard)
+// 2. GET /applications
 router.get('/applications', requireAuth, async (req, res) => {
   try {
     const allApps = await db.select().from(applications);
@@ -121,7 +116,7 @@ router.get('/applications', requireAuth, async (req, res) => {
   }
 });
 
-// 3. POST /apply (กดสมัครแล้วได้เป็นสต๊าฟทันที + จำกัด 1 ฝ่ายต่อ 1 กิจกรรม)
+// 3. POST /apply (ยึดชั้นปีตามที่ตั้งไว้ในกิจกรรมใหญ่ที่เดียว)
 router.post('/apply', requireAuth, async (req, res) => {
   try {
     const { eventId, roleId } = req.body;
@@ -131,12 +126,10 @@ router.post('/apply', requireAuth, async (req, res) => {
     if (!studentId) return res.status(401).json({ error: 'Unauthorized: กรุณาเข้าสู่ระบบก่อน' });
     if (!eventId || !roleId) return res.status(400).json({ error: 'ข้อมูลกิจกรรมและฝ่ายไม่ครบถ้วน' });
 
-    // ด่านตรวจคณะวิศวกรรมศาสตร์
     if (!isEngineeringStudent(studentId, sessionUser?.faculty, sessionUser?.role)) {
       return res.status(403).json({ error: 'ระบบรับสมัครสต๊าฟสงวนสิทธิ์เฉพาะนักศึกษาคณะวิศวกรรมศาสตร์เท่านั้น' });
     }
 
-    // ด่านตรวจโปรไฟล์
     const profile = await db.select().from(userProfiles).where(eq(userProfiles.studentId, studentId));
     if (profile.length === 0) {
       return res.status(403).json({
@@ -149,7 +142,6 @@ router.post('/apply', requireAuth, async (req, res) => {
     if (targetEvent.length === 0) return res.status(404).json({ error: 'ไม่พบกิจกรรมนี้' });
     if (targetEvent[0].status !== 'open') return res.status(400).json({ error: 'กิจกรรมนี้ปิดรับสมัครแล้ว' });
 
-    // ตรวจสอบชั้นปีที่มีสิทธิ์สมัคร
     const metaRow = await db.select().from(siteSettings).where(eq(siteSettings.key, getEventMetaKey(Number(eventId))));
     let extra: EventExtraMeta = {};
     if (metaRow.length > 0) {
@@ -160,15 +152,14 @@ router.post('/apply', requireAuth, async (req, res) => {
     if (targetRole.length === 0) return res.status(404).json({ error: 'ไม่พบฝ่ายที่เลือก' });
     const currentRole = targetRole[0];
 
+    // 🌟 ตรวจชั้นปีจากกิจกรรมใหญ่ที่เดียว
     const studentYear = getStudentYearFromId(studentId);
     const eventAllowedYears = extra.allowedYears || ['1', '2', '3', '4'];
-    const roleAllowedYears = extra.roleExtras?.[currentRole.roleName]?.allowedYears || eventAllowedYears;
 
-    if (!eventAllowedYears.includes(studentYear) || !roleAllowedYears.includes(studentYear)) {
-      return res.status(400).json({ error: `ฝ่ายหรือกิจกรรมนี้เปิดรับเฉพาะนักศึกษาชั้นปีที่ ${roleAllowedYears.join(', ')} (คุณอยู่ชั้นปีที่ ${studentYear})` });
+    if (!eventAllowedYears.includes(studentYear)) {
+      return res.status(400).json({ error: `กิจกรรมนี้เปิดรับเฉพาะนักศึกษาชั้นปีที่ ${eventAllowedYears.join(', ')} (คุณอยู่ชั้นปีที่ ${studentYear})` });
     }
 
-    // ด่านตรวจ: ห้ามสมัครหลายฝ่ายในกิจกรรมเดียวกัน (สมัครได้แค่ 1 ฝ่ายต่อ 1 กิจกรรม)
     const existingInSameEvent = await db.select().from(applications).where(
       and(eq(applications.studentId, studentId), eq(applications.eventId, Number(eventId)))
     );
@@ -180,7 +171,6 @@ router.post('/apply', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'ขออภัย โควต้าของฝ่ายนี้เต็มแล้วครับ' });
     }
 
-    // บันทึกเป็นสต๊าฟทันที (status: 'approved')
     const newApplication = await db.insert(applications).values({
       eventId: Number(eventId),
       roleId: Number(roleId),
@@ -202,7 +192,7 @@ router.post('/apply', requireAuth, async (req, res) => {
   }
 });
 
-// 4. POST /cancel (ให้ User กดยกเลิกการเป็นสต๊าฟและคืนโควต้า +1 ทันที)
+// 4. POST /cancel
 router.post('/cancel', requireAuth, async (req, res) => {
   try {
     const { applicationId, eventId } = req.body;
@@ -236,7 +226,7 @@ router.post('/cancel', requireAuth, async (req, res) => {
   }
 });
 
-// 5. POST /events (Admin สร้างกิจกรรมพร้อมฝ่าย รูปภาพ ชั้นปี และ QR Code เก็บลง DB)
+// 5. POST /events
 router.post(['/', '/events'], requireAdmin, async (req, res) => {
   try {
     const { title, description, imageUrl, allowedYears, qrCount, mainLineQrUrl, roles } = req.body;
@@ -267,7 +257,6 @@ router.post(['/', '/events'], requireAdmin, async (req, res) => {
           });
           roleExtras[r.roleName] = {
             description: r.description || '',
-            allowedYears: r.allowedYears || allowedYears || ['1', '2', '3', '4'],
             lineQrUrl: r.lineQrUrl || ''
           };
         }
@@ -296,7 +285,7 @@ router.post(['/', '/events'], requireAdmin, async (req, res) => {
   }
 });
 
-// 6. PUT /events/:id (Admin แก้ไขกิจกรรม ฝ่าย รูปภาพ ชั้นปี และ QR Code)
+// 6. PUT /events/:id
 router.put(['/:id', '/events/:id'], requireAdmin, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id as string, 10);
@@ -340,7 +329,6 @@ router.put(['/:id', '/events/:id'], requireAdmin, async (req, res) => {
         }
         roleExtras[r.roleName] = {
           description: r.description || '',
-          allowedYears: r.allowedYears || allowedYears || ['1', '2', '3', '4'],
           lineQrUrl: r.lineQrUrl || ''
         };
       }
@@ -368,7 +356,7 @@ router.put(['/:id', '/events/:id'], requireAdmin, async (req, res) => {
   }
 });
 
-// 7. DELETE /events/:id (Admin ลบกิจกรรม)
+// 7. DELETE /events/:id
 router.delete(['/:id', '/events/:id'], requireAdmin, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id as string, 10);
