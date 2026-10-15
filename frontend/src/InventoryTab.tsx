@@ -4,7 +4,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import {
   Plus, Edit, Trash2, Package, X, ShoppingCart, Filter, ArrowLeft,
   Printer, CheckCircle, Calendar as CalendarIcon, XCircle, User as UserIcon,
-  AlertCircle, Clock, Check, Ban, QrCode, FileText, Search, ScanLine, Upload, Camera, CameraOff
+  AlertCircle, Clock, Check, Ban, QrCode, FileText, Search, ScanLine, Upload, Camera, CameraOff, AlertTriangle
 } from 'lucide-react';
 import { Calendar, momentLocalizer, type View } from 'react-big-calendar';
 import moment from 'moment';
@@ -30,6 +30,26 @@ const localizer = momentLocalizer(moment);
 
 const CATEGORIES = ['ทั้งหมด', 'ทั่วไป', 'อิเล็กทรอนิกส์', 'เครื่องเขียน/อุปกรณ์จัดงาน', 'กีฬา', 'อื่นๆ'];
 const DEFAULT_ITEM_IMG = 'https://placehold.co/400x300/f3f4f6/6b7280?text=ไม่มีรูปภาพ';
+
+// ============================================================================
+// 🌟 ตั้งค่าขนาดและอัตราส่วนรูปภาพในหน้ายืม-คืนอุปกรณ์ (ปรับแก้ตัวเลขตรงนี้ได้เลย)
+// ============================================================================
+const INVENTORY_IMAGE_SIZES = {
+  catalogCardImage: {
+    width: '100%',
+    aspectRatio: '4 / 3',
+    height: '180px',
+    objectFit: 'contain' as const,
+    backgroundColor: '#f8fafc'
+  },
+  cartThumbnail: {
+    width: '72px',
+    height: '72px',
+    objectFit: 'contain' as const,
+    backgroundColor: '#ffffff'
+  }
+};
+
 const TIME_OPTIONS = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
   '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
@@ -200,6 +220,12 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
   const [showCartPrompt, setShowCartPrompt] = useState<{ show: boolean; itemName: string }>({ show: false, itemName: '' });
   const [errorModal, setErrorModal] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [successModal, setSuccessModal] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; title: string; message: string; onConfirm: () => void }>({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -236,7 +262,6 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
     eventEndDate: moment().add(1, 'days').format('YYYY-MM-DD'),
   });
 
-  // 🌟 ประกาศฟังก์ชันดึงข้อมูลไว้ด้านบนก่อน useEffect ทั้งหมด เพื่อไม่ให้เกิด Error accessed before declaration
   const fetchAllData = async () => {
     try {
       const [itemsRes, borrowRes] = await Promise.all([
@@ -264,7 +289,6 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
     };
   }, []);
 
-  // 🌟 ระบบเปิดกล้องมือถือ / โน้ตบุ๊ก ส่องสแกน QR Code จริง
   useEffect(() => {
     if (!isCameraOpen || currentRole !== 'admin' || adminSubTab !== 'scanner') return;
 
@@ -299,9 +323,7 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
               setErrorModal({ show: true, message: errMsg });
             }
           },
-          () => {
-            // กำลังโฟกัสหา QR Code
-          }
+          () => {}
         );
       } catch (err) {
         console.error('Camera start error:', err);
@@ -469,7 +491,6 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
       return;
     }
 
-    // 🌟 ล็อกไม่ให้วันจัดกิจกรรมอยู่นอกเหนือช่วงวันที่ยืม - วันที่คืน
     if (
       moment(userInfoForm.eventStartDate).isBefore(userInfoForm.borrowDate, 'day') ||
       moment(userInfoForm.eventEndDate).isAfter(userInfoForm.returnDate, 'day')
@@ -579,22 +600,29 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
     }
   };
 
-  const handleUserCancelRequest = async (request: GroupedRequest) => {
-    if (!confirm(`ยืนยันการยกเลิกคำขอยืมรหัส ${request.billId} ใช่หรือไม่?`)) return;
-
-    try {
-      await Promise.all(
-        request.items.map(item =>
-          axios.post(`${API_URL}/borrowings/cancel`, { borrowingId: item.recordId })
-        )
-      );
-      await fetchAllData();
-      setSuccessModal({ show: true, message: `ยกเลิกคำขอยืมรหัส ${request.billId} และคืนโควต้าอุปกรณ์เรียบร้อยแล้ว` });
-      setViewState('user-form');
-    } catch (error) {
-      console.error(error);
-      setErrorModal({ show: true, message: 'ไม่สามารถยกเลิกคำขอยืมได้ กรุณาลองใหม่อีกครั้ง' });
-    }
+  // 🌟 เปลี่ยนเป็น Custom Pop-up ยืนยันการยกเลิกคำขอยืม
+  const handleUserCancelRequest = (request: GroupedRequest) => {
+    setConfirmModal({
+      show: true,
+      title: 'ยืนยันการยกเลิกคำขอยืม',
+      message: `คุณต้องการยกเลิกคำขอยืมรหัส ${request.billId} และคืนโควต้าอุปกรณ์ใช่หรือไม่?`,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, show: false }));
+        try {
+          await Promise.all(
+            request.items.map(item =>
+              axios.post(`${API_URL}/borrowings/cancel`, { borrowingId: item.recordId })
+            )
+          );
+          await fetchAllData();
+          setSuccessModal({ show: true, message: `ยกเลิกคำขอยืมรหัส ${request.billId} และคืนโควต้าอุปกรณ์เรียบร้อยแล้ว` });
+          setViewState('user-form');
+        } catch (error) {
+          console.error(error);
+          setErrorModal({ show: true, message: 'ไม่สามารถยกเลิกคำขอยืมได้ กรุณาลองใหม่อีกครั้ง' });
+        }
+      }
+    });
   };
 
   const handleOpenReceiptView = (request: GroupedRequest) => {
@@ -851,21 +879,31 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
       }
       setIsModalOpen(false);
       await fetchAllData();
+      setSuccessModal({ show: true, message: isEditMode ? 'บันทึกการแก้ไขอุปกรณ์สำเร็จ!' : 'เพิ่มอุปกรณ์ใหม่เข้าคลังสำเร็จ!' });
     } catch (error) {
       console.error(error);
       setErrorModal({ show: true, message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลอุปกรณ์' });
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('ยืนยันการลบอุปกรณ์นี้ออกจากคลัง?')) {
-      try {
-        await axios.delete(`${API_URL}/items/${id}`);
-        await fetchAllData();
-      } catch (error) {
-        console.error(error);
+  // 🌟 เปลี่ยนเป็น Custom Pop-up ยืนยันการลบอุปกรณ์
+  const handleDelete = (id: string) => {
+    setConfirmModal({
+      show: true,
+      title: 'ยืนยันการลบอุปกรณ์',
+      message: `คุณต้องการลบอุปกรณ์รหัส #${id} ออกจากคลังพัสดุใช่หรือไม่?`,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, show: false }));
+        try {
+          await axios.delete(`${API_URL}/items/${id}`);
+          await fetchAllData();
+          setSuccessModal({ show: true, message: `ลบอุปกรณ์รหัส #${id} เรียบร้อยแล้ว` });
+        } catch (error) {
+          console.error(error);
+          setErrorModal({ show: true, message: 'ไม่สามารถลบอุปกรณ์ได้' });
+        }
       }
-    }
+    });
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -989,6 +1027,25 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
             <button className="btn-secondary" style={{ width: '100%', padding: '10px' }} onClick={() => setErrorModal({ show: false, message: '' })}>
               ปิดหน้าต่าง
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pop-up ยืนยันการทำงาน (แทน window.confirm) */}
+      {confirmModal.show && (
+        <div className="modal-overlay" style={{ zIndex: 1100, backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <div className="modal-content" style={{ maxWidth: '420px', width: '92%', textAlign: 'center', padding: '32px 24px' }}>
+            <AlertTriangle size={56} color="#d97706" style={{ margin: '0 auto 14px' }} />
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#111827' }}>{confirmModal.title}</h3>
+            <p style={{ color: '#4b5563', marginBottom: '24px', fontSize: '15px', lineHeight: 1.5 }}>{confirmModal.message}</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}>
+                ยกเลิก
+              </button>
+              <button className="btn-primary" style={{ flex: 1, padding: '10px', backgroundColor: '#dc2626', borderColor: '#dc2626' }} onClick={confirmModal.onConfirm}>
+                ยืนยัน
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1212,7 +1269,7 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
               </div>
             </div>
 
-           <div className="inv-card-box">
+            <div className="inv-card-box">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #e5e7eb' }}>
                 <Clock size={22} color="#8b0000" />
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: 0 }}>ช่วงเวลาการยืม-คืน และวันจัดกิจกรรม</h3>
@@ -1228,7 +1285,6 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
                         const nextBorrow = moment(date).format('YYYY-MM-DD');
                         setUserInfoForm(prev => {
                           const nextReturn = moment(prev.returnDate).isBefore(nextBorrow) ? nextBorrow : prev.returnDate;
-                          // 🌟 บังคับให้วันจัดกิจกรรมขยับตาม ไม่ให้หลุดกรอบวันยืม-คืน
                           let nextEvStart = prev.eventStartDate;
                           let nextEvEnd = prev.eventEndDate;
                           if (moment(nextEvStart).isBefore(nextBorrow)) nextEvStart = nextBorrow;
@@ -1274,7 +1330,6 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
                       if (date) {
                         const nextReturn = moment(date).format('YYYY-MM-DD');
                         setUserInfoForm(prev => {
-                          // 🌟 บังคับให้วันจัดกิจกรรมไม่เกินวันที่คืนที่เพิ่งเปลี่ยนใหม่
                           let nextEvStart = prev.eventStartDate;
                           let nextEvEnd = prev.eventEndDate;
                           if (moment(nextEvStart).isAfter(nextReturn)) nextEvStart = nextReturn;
@@ -1326,7 +1381,6 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
                         }));
                       }
                     }}
-                    // 🌟 ล็อกให้เลือกได้เฉพาะตั้งแต่วันที่ยืม ถึง วันที่คืน เท่านั้น
                     minDate={moment(userInfoForm.borrowDate, 'YYYY-MM-DD').toDate()}
                     maxDate={moment(userInfoForm.returnDate, 'YYYY-MM-DD').toDate()}
                     locale="th"
@@ -1348,7 +1402,6 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
                     onChange={(date: Date | null) => {
                       if (date) setUserInfoForm(prev => ({ ...prev, eventEndDate: moment(date).format('YYYY-MM-DD') }));
                     }}
-                    // 🌟 ล็อกให้เลือกได้ตั้งแต่วันเริ่มกิจกรรม ถึง วันที่คืน เท่านั้น
                     minDate={moment(userInfoForm.eventStartDate, 'YYYY-MM-DD').toDate()}
                     maxDate={moment(userInfoForm.returnDate, 'YYYY-MM-DD').toDate()}
                     locale="th"
@@ -1465,9 +1518,7 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
         </div>
       )}
 
-      {/* =====================================================================
-          🌟 ADMIN: หน้าสแกนด้วยกล้องมือถือ/โน้ตบุ๊ก หรือ ค้นหารหัส ENT
-         ===================================================================== */}
+      {/* ADMIN: หน้าสแกนด้วยกล้องมือถือ/โน้ตบุ๊ก หรือ ค้นหารหัส ENT */}
       {currentRole === 'admin' && adminSubTab === 'scanner' && viewState !== 'receipt' && (
         <div className="inv-card-box" style={{ maxWidth: '720px', margin: '0 auto' }}>
           <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#8b0000' }}>
@@ -1477,7 +1528,6 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
             สามารถกดเปิดกล้องมือถือหรือเว็บแคมโน้ตบุ๊กเพื่อส่องสแกน QR Code บนใบยืมของนักศึกษา หรือพิมพ์ค้นหารหัสอ้างอิงด้านล่างได้เลยครับ
           </p>
 
-          {/* กล่องปุ่มเปิดกล้องสแกน QR Code จริง */}
           <div style={{ marginBottom: '24px', textAlign: 'center', backgroundColor: '#f9fafb', padding: '20px', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
             <button
               type="button"
@@ -1580,7 +1630,7 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
         </div>
       )}
 
-      {/* STEP 3: หน้าเลือกอุปกรณ์ (Catalog) */}
+      {/* STEP 3: หน้าเลือกอุปกรณ์ (Catalog - ใช้ INVENTORY_IMAGE_SIZES.catalogCardImage) */}
       {viewState === 'catalog' && ((currentRole === 'user' && !activePendingRequest) || (currentRole === 'admin' && adminSubTab === 'assets')) && (
         <>
           {currentRole === 'user' && borrowerInfo && (
@@ -1622,14 +1672,24 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
                 return (
                   <div key={item.id} style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                     {currentRole === 'admin' && (
-                      <div style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', gap: '4px' }}>
+                      <div style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', gap: '4px', zIndex: 5 }}>
                         <button onClick={() => handleOpenEditModal(item)} style={{ background: 'white', border: 'none', padding: '6px', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', color: '#3730a3' }}><Edit size={16} /></button>
                         <button onClick={() => handleDelete(item.id)} style={{ background: 'white', border: 'none', padding: '6px', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', color: '#ef4444' }}><Trash2 size={16} /></button>
                       </div>
                     )}
 
-                    <div style={{ height: '160px', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                      <img src={item.imageUrl || DEFAULT_ITEM_IMG} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={handleImageError} />
+                    <div style={{ backgroundColor: INVENTORY_IMAGE_SIZES.catalogCardImage.backgroundColor, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderBottom: '1px solid #f3f4f6' }}>
+                      <img
+                        src={item.imageUrl || DEFAULT_ITEM_IMG}
+                        alt={item.name}
+                        style={{
+                          width: INVENTORY_IMAGE_SIZES.catalogCardImage.width,
+                          aspectRatio: INVENTORY_IMAGE_SIZES.catalogCardImage.aspectRatio,
+                          height: INVENTORY_IMAGE_SIZES.catalogCardImage.height,
+                          objectFit: INVENTORY_IMAGE_SIZES.catalogCardImage.objectFit
+                        }}
+                        onError={handleImageError}
+                      />
                     </div>
                     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                       <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>#{item.id} • {item.category}</div>
@@ -1725,7 +1785,7 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
         </div>
       )}
 
-      {/* หน้าสรุปตะกร้าสินค้า */}
+      {/* หน้าสรุปตะกร้าสินค้า (ใช้ INVENTORY_IMAGE_SIZES.cartThumbnail) */}
       {viewState === 'cart' && !activePendingRequest && (
         <div className="inv-card-box" style={{ maxWidth: '800px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '24px', borderBottom: '2px solid #f3f4f6', paddingBottom: '16px' }}>
@@ -1747,7 +1807,19 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
                 {cart.map((item, index) => (
                   <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '16px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
                     <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-                      <img src={item.asset.imageUrl || DEFAULT_ITEM_IMG} alt={item.asset.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #d1d5db' }} onError={handleImageError} />
+                      <img
+                        src={item.asset.imageUrl || DEFAULT_ITEM_IMG}
+                        alt={item.asset.name}
+                        style={{
+                          width: INVENTORY_IMAGE_SIZES.cartThumbnail.width,
+                          height: INVENTORY_IMAGE_SIZES.cartThumbnail.height,
+                          objectFit: INVENTORY_IMAGE_SIZES.cartThumbnail.objectFit,
+                          backgroundColor: INVENTORY_IMAGE_SIZES.cartThumbnail.backgroundColor,
+                          borderRadius: '8px',
+                          border: '1px solid #d1d5db'
+                        }}
+                        onError={handleImageError}
+                      />
                       <div>
                         <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>
                           {item.asset.name} <span style={{ color: '#8b0000', fontSize: '14px' }}>(จำนวน {item.quantity} ชิ้น)</span>
@@ -2036,7 +2108,7 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
                 </label>
                 {formData.imageUrl && (
                   <div style={{ marginTop: '10px', textAlign: 'center' }}>
-                    <img src={formData.imageUrl} alt="Preview" style={{ maxHeight: '120px', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                    <img src={formData.imageUrl} alt="Preview" style={{ maxHeight: '120px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
                   </div>
                 )}
               </div>

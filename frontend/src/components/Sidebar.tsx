@@ -1,25 +1,113 @@
 import { useState } from 'react';
-import { LayoutDashboard, Package, ClipboardList, LogOut, GraduationCap, Users, Menu, X } from 'lucide-react';
+import {
+  LayoutDashboard, Package, ClipboardList, LogOut, GraduationCap,
+  Users, Menu, X, Calendar, Database, BookOpen, FileText,
+  HeartHandshake, Clock, ExternalLink, UserCheck, ChevronDown, ChevronRight, Crown
+} from 'lucide-react';
 
 interface User {
   studentId: string;
   fullName: string;
   faculty: string;
   email: string;
-  role: 'admin' | 'user';
+  role: 'supreme' | 'admin' | 'user';
 }
 
-export type AppTab = 'home' | 'inventory' | 'history' | 'staff';
+export type AppTab = 'home' | 'inventory' | 'history' | 'staff' | 'directory';
 
 interface SidebarProps {
   activeTab: AppTab;
   setActiveTab: (tab: AppTab) => void;
   currentUser?: User | null;
   onLogout?: () => void;
+  lang?: 'th' | 'en';
 }
 
-export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout }: SidebarProps) {
+const CLUB_LOGO_URL = '';
+
+// ============================================================================
+// 🌟 ข้อ 6: ตั้งค่าหมวดหมู่ Dropdown ลิงก์ภายนอกของคณะฯ ตรงนี้ได้เลย
+// ============================================================================
+const CUSTOM_EXTERNAL_DROPDOWNS = [
+  {
+    id: 'academic_services',
+    categoryTh: 'บริการวิชาการ (SD SSO)',
+    categoryEn: 'Academic Services',
+    defaultOpen: false,
+    links: [
+      {
+        title: 'SIS ENG',
+        subtitleTh: 'ระบบฐานข้อมูลนักศึกษา คณะวิศวะฯ',
+        subtitleEn: 'Student Information System',
+        url: 'https://sis.eng.cmu.ac.th',
+        icon: Database
+      },
+      {
+        title: 'Edserv ENG',
+        subtitleTh: 'บริการข้อมูลและเอกสารการเรียน',
+        subtitleEn: 'Educational Services',
+        url: 'https://edserv.eng.cmu.ac.th',
+        icon: BookOpen
+      },
+      {
+        title: 'Document Request',
+        subtitleTh: 'ระบบขอหนังสือรับรอง คณะวิศวะฯ',
+        subtitleEn: 'Official Document Request',
+        url: 'https://student.eng.cmu.ac.th/dashboard',
+        icon: FileText
+      }
+    ]
+  },
+  {
+    id: 'student_activities',
+    categoryTh: 'พัฒนานักศึกษา (SD SSO)',
+    categoryEn: 'Student Support',
+    defaultOpen: false,
+    links: [
+      {
+        title: 'Activity Calendar',
+        subtitleTh: 'ปฏิทินกิจกรรมสำหรับนักศึกษา',
+        subtitleEn: 'Engineering Activity Calendar',
+        url: 'https://activity.eng.cmu.ac.th/calendar',
+        icon: Calendar
+      },
+      {
+        title: 'Scholarship System',
+        subtitleTh: 'ระบบทุนการศึกษาประเภทขัดสน',
+        subtitleEn: 'Financial Aid & Scholarships',
+        url: 'https://student.eng.cmu.ac.th/dashboard',
+        icon: HeartHandshake
+      },
+      {
+        title: 'SD Queue',
+        subtitleTh: 'ระบบจองคิวงานพัฒนานักศึกษา',
+        subtitleEn: 'Student Development Queue',
+        url: 'https://student.eng.cmu.ac.th/dashboard',
+        icon: Clock
+      }
+    ]
+  }
+];
+
+export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout, lang = 'th' }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isAdminOrSupreme = currentUser?.role === 'admin' || currentUser?.role === 'supreme';
+
+  // State เปิด-ปิด Dropdown ทุกหมวดหมู่ให้เหมือนกันทั้งหมด
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {
+      main_club_menu: false,
+      borrowing_menu: false
+    };
+    CUSTOM_EXTERNAL_DROPDOWNS.forEach(g => {
+      init[g.id] = Boolean(g.defaultOpen);
+    });
+    return init;
+  });
+
+  const toggleGroup = (id: string) => {
+    setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const handleSelectTab = (tab: AppTab) => {
     setActiveTab(tab);
@@ -34,7 +122,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
             display: none;
           }
           .smo-sidebar-container {
-            width: 260px;
+            width: 280px;
             background-color: #ffffff;
             border-right: 1px solid #e5e7eb;
             display: flex;
@@ -42,6 +130,72 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
             height: 100vh;
             flex-shrink: 0;
             z-index: 900;
+            overflow-y: auto;
+          }
+          .smo-group-box {
+            margin-bottom: 8px;
+          }
+          .smo-dropdown-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            background-color: #f9fafb;
+            color: #111827;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+          }
+          .smo-dropdown-header:hover {
+            background-color: #fef2f2;
+            color: #8b0000;
+            border-color: #fecaca;
+          }
+          .smo-dropdown-header.open {
+            background-color: #fef2f2;
+            color: #8b0000;
+            border-color: #fecaca;
+          }
+          .smo-dropdown-body {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 6px;
+            padding-left: 10px;
+            margin-left: 12px;
+            border-left: 2px solid #fecaca;
+          }
+          .smo-menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: #374151;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            text-decoration: none;
+            transition: all 0.2s;
+          }
+          .smo-menu-item:hover {
+            background-color: #fef2f2;
+            color: #8b0000;
+          }
+          .smo-menu-item.active {
+            background-color: #8b0000;
+            color: #ffffff;
+            font-weight: 700;
           }
           .smo-mobile-backdrop {
             display: none;
@@ -82,28 +236,39 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
         `}
       </style>
 
-      {/* แถบด้านบนสำหรับหน้าจอมือถือ */}
+      {/* แถบเมนูบนมือถือ */}
       <div className="smo-mobile-topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <GraduationCap size={26} color="#8b0000" />
-          <strong style={{ color: '#8b0000', fontSize: '17px' }}>SMO ENT</strong>
+          {CLUB_LOGO_URL ? (
+            <img src={CLUB_LOGO_URL} alt="SMO ENT Logo" style={{ width: '34px', height: '34px', objectFit: 'contain' }} />
+          ) : (
+            <GraduationCap size={26} color="#8b0000" />
+          )}
+          <strong style={{ color: '#8b0000', fontSize: '17px' }}>SMO ENT CMU</strong>
         </div>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '6px 10px', color: '#8b0000', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
         >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />} เมนู
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />} {lang === 'th' ? 'เมนู' : 'Menu'}
         </button>
       </div>
 
       <div className={`smo-mobile-backdrop ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(false)} />
 
-      {/* ตัว Sidebar หลัก */}
+      {/* Sidebar หลัก */}
       <div className={`smo-sidebar-container ${mobileOpen ? 'open' : ''}`}>
-        <div style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <GraduationCap size={28} color="#8b0000" />
-            <h2 style={{ color: '#8b0000', margin: 0, fontSize: '18px', fontWeight: 'bold' }}>SMO ENT</h2>
+            {CLUB_LOGO_URL ? (
+              <img src={CLUB_LOGO_URL} alt="SMO ENT Logo" style={{ width: '42px', height: '42px', objectFit: 'contain', borderRadius: '8px' }} />
+            ) : (
+              <GraduationCap size={32} color="#8b0000" />
+            )}
+            <div>
+              <h2 style={{ color: '#8b0000', margin: 0, fontSize: '18px', fontWeight: '800', lineHeight: 1.1 }}>SMO ENT</h2>
+              <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600 }}>Engineering CMU</span>
+            </div>
           </div>
           {mobileOpen && (
             <button onClick={() => setMobileOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}>
@@ -112,78 +277,156 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
           )}
         </div>
 
-        <nav style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <div style={{ padding: '0 16px', marginTop: '8px', marginBottom: '4px', fontSize: '12px', fontWeight: 'bold', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            เมนูหลัก
+        <nav style={{ flex: 1, padding: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {/* 🌟 Dropdown หมวดที่ 1: เมนูหลักสโมสรฯ */}
+          <div className="smo-group-box">
+            <button
+              type="button"
+              onClick={() => toggleGroup('main_club_menu')}
+              className={`smo-dropdown-header ${openGroups.main_club_menu ? 'open' : ''}`}
+            >
+              <span>{lang === 'th' ? 'เมนูหลักสโมสรฯ' : 'Main Club Menu'}</span>
+              {openGroups.main_club_menu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </button>
+
+            {openGroups.main_club_menu && (
+              <div className="smo-dropdown-body">
+                <button
+                  onClick={() => handleSelectTab('home')}
+                  className={`smo-menu-item ${activeTab === 'home' ? 'active' : ''}`}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <LayoutDashboard size={17} />
+                    <span>{lang === 'th' ? 'หน้าหลักประชาสัมพันธ์' : 'Home & Announcements'}</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleSelectTab('staff')}
+                  className={`smo-menu-item ${activeTab === 'staff' ? 'active' : ''}`}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Users size={17} />
+                    <span>{lang === 'th' ? 'สมัครสต๊าฟ & เช็คชื่อ QR' : 'Staff & QR Attendance'}</span>
+                  </div>
+                </button>
+
+                {isAdminOrSupreme && (
+                  <button
+                    onClick={() => handleSelectTab('directory')}
+                    className={`smo-menu-item ${activeTab === 'directory' ? 'active' : ''}`}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <UserCheck size={17} />
+                      <span>{lang === 'th' ? 'ฐานข้อมูลสมาชิก (OAuth)' : 'OAuth Member Directory'}</span>
+                    </div>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-          <button
-            onClick={() => handleSelectTab('home')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '8px', border: 'none',
-              background: activeTab === 'home' ? '#fef2f2' : 'transparent',
-              color: activeTab === 'home' ? '#8b0000' : '#4b5563',
-              cursor: 'pointer', fontWeight: '500', width: '100%', textAlign: 'left', transition: 'all 0.2s'
-            }}
-          >
-            <LayoutDashboard size={20} /> หน้าหลัก
-          </button>
 
-          <button
-            onClick={() => handleSelectTab('staff')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '8px', border: 'none',
-              background: activeTab === 'staff' ? '#fef2f2' : 'transparent',
-              color: activeTab === 'staff' ? '#8b0000' : '#4b5563',
-              cursor: 'pointer', fontWeight: '500', width: '100%', textAlign: 'left', transition: 'all 0.2s'
-            }}
-          >
-            <Users size={20} /> สมัครสตาฟกิจกรรม
-          </button>
+          {/* 🌟 Dropdown หมวดที่ 2: บริการยืม-คืนพัสดุ */}
+          <div className="smo-group-box">
+            <button
+              type="button"
+              onClick={() => toggleGroup('borrowing_menu')}
+              className={`smo-dropdown-header ${openGroups.borrowing_menu ? 'open' : ''}`}
+            >
+              <span>{lang === 'th' ? 'บริการยืม-คืนพัสดุ' : 'Equipment Borrowing'}</span>
+              {openGroups.borrowing_menu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </button>
 
-          <div style={{ padding: '0 16px', marginTop: '24px', marginBottom: '4px', fontSize: '12px', fontWeight: 'bold', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            บริการยืม-คืน
+            {openGroups.borrowing_menu && (
+              <div className="smo-dropdown-body">
+                <button
+                  onClick={() => handleSelectTab('inventory')}
+                  className={`smo-menu-item ${activeTab === 'inventory' ? 'active' : ''}`}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Package size={17} />
+                    <span>{lang === 'th' ? 'บริการยืมของ' : 'Borrow Equipment'}</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleSelectTab('history')}
+                  className={`smo-menu-item ${activeTab === 'history' ? 'active' : ''}`}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <ClipboardList size={17} />
+                    <span>{lang === 'th' ? 'ประวัติยืม - คืน' : 'Borrowing History'}</span>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
-          <button
-            onClick={() => handleSelectTab('inventory')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '8px', border: 'none',
-              background: activeTab === 'inventory' ? '#fef2f2' : 'transparent',
-              color: activeTab === 'inventory' ? '#8b0000' : '#4b5563',
-              cursor: 'pointer', fontWeight: '500', width: '100%', textAlign: 'left', transition: 'all 0.2s'
-            }}
-          >
-            <Package size={20} /> บริการยืมของ
-          </button>
 
-          <button
-            onClick={() => handleSelectTab('history')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '8px', border: 'none',
-              background: activeTab === 'history' ? '#fef2f2' : 'transparent',
-              color: activeTab === 'history' ? '#8b0000' : '#4b5563',
-              cursor: 'pointer', fontWeight: '500', width: '100%', textAlign: 'left', transition: 'all 0.2s'
-            }}
-          >
-            <ClipboardList size={20} /> ประวัติยืม - คืน
-          </button>
+          {/* 🌟 Dropdown หมวดที่ 3 & 4: เว็บไซต์บริการนักศึกษา (ดีไซน์เดียวกันทั้งหมด) */}
+          {CUSTOM_EXTERNAL_DROPDOWNS.map((group) => {
+            const isOpen = Boolean(openGroups[group.id]);
+            return (
+              <div key={group.id} className="smo-group-box">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  className={`smo-dropdown-header ${isOpen ? 'open' : ''}`}
+                >
+                  <span>{lang === 'th' ? group.categoryTh : group.categoryEn}</span>
+                  {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </button>
+
+                {isOpen && (
+                  <div className="smo-dropdown-body">
+                    {group.links.map((link, lIdx) => {
+                      const IconComp = link.icon;
+                      return (
+                        <a
+                          key={lIdx}
+                          href={link.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="smo-menu-item"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                            <IconComp size={16} style={{ flexShrink: 0, color: '#8b0000' }} />
+                            <div style={{ overflow: 'hidden' }}>
+                              <div style={{ fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                                {link.title}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b7280', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                                {lang === 'th' ? link.subtitleTh : link.subtitleEn}
+                              </div>
+                            </div>
+                          </div>
+                          <ExternalLink size={12} style={{ flexShrink: 0, opacity: 0.6 }} />
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {currentUser && (
-          <div style={{ padding: '24px', borderTop: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ padding: '16px 20px', borderTop: '1px solid #e5e7eb', backgroundColor: '#fafafa' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
               <div style={{
-                width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#1f2937',
+                width: '36px', height: '36px', borderRadius: '50%',
+                backgroundColor: currentUser.role === 'supreme' ? '#b45309' : '#8b0000',
                 color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 'bold', flexShrink: 0
+                fontWeight: 'bold', flexShrink: 0, fontSize: '13px'
               }}>
-                {currentUser?.fullName ? currentUser.fullName.substring(0, 2).toUpperCase() : 'U'}
+                {currentUser.role === 'supreme' ? <Crown size={18} /> : (currentUser?.fullName ? currentUser.fullName.substring(0, 2).toUpperCase() : 'U')}
               </div>
 
               <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontWeight: '600', fontSize: '14px', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                <div style={{ fontWeight: '700', fontSize: '13px', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                   {currentUser.fullName}
                 </div>
-                <div style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                <div style={{ fontSize: '11px', color: '#6b7280', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                   {currentUser.email}
                 </div>
               </div>
@@ -192,11 +435,11 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
             <button
               onClick={onLogout}
               style={{
-                display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0', border: 'none',
-                background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: '500', width: '100%', textAlign: 'left'
+                display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', border: 'none',
+                background: 'transparent', color: '#dc2626', cursor: 'pointer', fontWeight: '600', width: '100%', textAlign: 'left', fontSize: '13px'
               }}
             >
-              <LogOut size={18} /> ออกจากระบบ
+              <LogOut size={16} /> {lang === 'th' ? 'ออกจากระบบ' : 'Log out'}
             </button>
           </div>
         )}

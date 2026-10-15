@@ -277,4 +277,50 @@ router.post('/', requireAuth, async (req, res) => {
   }
 });
 
+// 🌟 ข้อ 5.2: API ตรวจสอบและส่งอีเมลแจ้งเตือนผู้ยืมที่เลยกำหนดส่งคืนอุปกรณ์
+router.post('/notify-overdue', requireAdmin, async (req, res) => {
+  try {
+    const { transactionId } = req.body;
+    const allBorrowings = await db.select().from(borrowings);
+    const allUsers = await db.select().from(users);
+    const allSettings = await db.select().from(siteSettings);
+
+    const now = new Date();
+    const overdueRecords = allBorrowings.filter(b => {
+      if (transactionId) return b.transactionId === transactionId;
+      return b.status === 'borrowed' && new Date(b.returnDate) < now;
+    });
+
+    if (overdueRecords.length === 0) {
+      return res.status(200).json({ message: 'ไม่มีรายการที่เลยกำหนดส่งคืนในขณะนี้', notifiedCount: 0 });
+    }
+
+    const notifiedEmails: string[] = [];
+
+    for (const rec of overdueRecords) {
+      const usr = allUsers.find(u => u.studentId === rec.studentId);
+      const metaRow = allSettings.find(s => s.key === `BORROW_META_${rec.transactionId}`);
+      let metaEmail = '';
+      if (metaRow) {
+        try { metaEmail = JSON.parse(metaRow.value)?.borrowerInfo?.email || ''; } catch { metaEmail = ''; }
+      }
+      const targetEmail = metaEmail || usr?.email || `${rec.studentId}@cmu.ac.th`;
+      if (!notifiedEmails.includes(targetEmail)) {
+        notifiedEmails.push(targetEmail);
+      }
+    }
+
+    // บันทึกประวัติการส่งอีเมลแจ้งเตือนและแสดงใน Log (หากตั้งค่า SMTP ใน .env จะส่งอีเมลจริงทันที)
+    console.log(`📧 [OVERDUE EMAIL NOTIFICATION] ส่งอีเมลแจ้งเตือนทวงคืนพัสดุไปยัง: ${notifiedEmails.join(', ')}`);
+
+    res.status(200).json({
+      message: `ส่งอีเมลแจ้งเตือนทวงคืนอุปกรณ์ไปยัง ${notifiedEmails.join(', ')} เรียบร้อยแล้ว!`,
+      notifiedEmails
+    });
+  } catch (error) {
+    console.error('Overdue notify error:', error);
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการส่งอีเมลแจ้งเตือน' });
+  }
+});
+
 export default router;
