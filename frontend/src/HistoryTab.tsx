@@ -281,7 +281,7 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-          <Clock size={24} color="#8b0000" /> {currentRole === 'admin' ? 'ประวัติการยืม-คืนทั้งหมด (Admin)' : 'ประวัติการยืม-คืนอุปกรณ์ของฉัน'}
+          <Clock size={24} color="#8b0000" /> {currentRole === 'admin' ? 'ประวัติการยืม - คืนทั้งหมด' : 'ประวัติการยืม - คืนอุปกรณ์ของฉัน'}
         </h2>
 
         {currentRole === 'admin' && (
@@ -300,7 +300,7 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
             }}
           >
             {isCameraOpen ? <CameraOff size={18} /> : <Camera size={18} />}
-            {isCameraOpen ? 'ปิดกล้องสแกน' : '📷 เปิดกล้องสแกน QR'}
+            {isCameraOpen ? 'ปิดกล้องสแกน' : 'เปิดกล้องสแกน QR'}
           </button>
         )}
       </div>
@@ -318,7 +318,7 @@ export default function HistoryTab({ currentRole, currentUserId }: HistoryTabPro
         <table style={{ width: '100%' }}>
           <thead>
             <tr>
-              <th>รหัสอ้างอิง (ENT)</th>
+              <th>รหัสอ้างอิง</th>
               <th>รายการอุปกรณ์</th>
               <th>กำหนดการ (ยืม - คืน)</th>
               <th className="text-center">สถานะ</th>

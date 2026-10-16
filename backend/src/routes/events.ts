@@ -70,10 +70,9 @@ const saveSupremeList = async (list: string[]) => {
 const getStudentYearFromId = (studentId: string): string => {
   const prefix = parseInt(studentId.substring(0, 2), 10);
   if (isNaN(prefix)) return '1';
-  const currentThaiYearShort = 69;
+  const currentThaiYearShort = 70;
   const year = currentThaiYearShort - prefix;
-  if (year <= 1) return '1';
-  if (year >= 4) return '4';
+  if (year <= 1) return 'ไปเรื่อยละ';
   return String(year);
 };
 

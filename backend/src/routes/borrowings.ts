@@ -221,7 +221,7 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     const randomDigits = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-    const transactionId = clientTxnId || `ENTrent${randomDigits}`;
+    const transactionId = clientTxnId || `ENT - ${randomDigits}`;
     const borrowQty = Number(quantity);
 
     const targetAsset = await db.select().from(assets).where(eq(assets.id, assetId));
