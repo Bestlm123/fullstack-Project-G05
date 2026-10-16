@@ -484,9 +484,6 @@ export default function HomePage({ currentRole, lang = 'th' }: HomePageProps) {
             <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#111827', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Megaphone size={22} color="#8b0000" /> {lang === 'th' ? 'ข่าวสารและประกาศอย่างเป็นทางการ' : 'Official News & Announcements'}
             </h3>
-            <span style={{ fontSize: '13px', color: '#6b7280' }}>
-              {lang === 'th' ? 'สโมสรนักศึกษาคณะวิศวกรรมศาสตร์ มหาวิทยาลัยเชียงใหม่' : 'Engineering Student Union, Chiang Mai University'}
-            </span>
           </div>
           {currentRole === 'admin' && (
             <button onClick={handleOpenAddNewsModal} className="btn-primary" style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '10px 18px', fontSize: '14px', fontWeight: '700' }}>
@@ -628,7 +625,7 @@ export default function HomePage({ currentRole, lang = 'th' }: HomePageProps) {
         <div className="official-section-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f3f4f6', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
             <h4 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#111827', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Calendar size={19} color="#8b0000" /> {lang === 'th' ? 'กำหนดการกิจกรรมคณะฯ (3 กิจกรรมถัดไป)' : 'Upcoming Faculty Activities'}
+              <Calendar size={19} color="#8b0000" /> {lang === 'th' ? 'กำหนดการกิจกรรมคณะฯ' : 'Upcoming Faculty Activities'}
             </h4>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {currentRole === 'admin' && (

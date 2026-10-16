@@ -1210,12 +1210,12 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
                   <input type="text" className="form-input" required value={userInfoForm.fullName} disabled />
                 </div>
                 <div className="form-field">
-                  <label>เบอร์โทรศัพท์ (10 หลัก) *</label>
+                  <label>เบอร์โทรศัพท์ *</label>
                   <input
                     type="tel"
                     className="form-input"
                     required
-                    placeholder="เช่น 0812345678"
+                    placeholder="เช่น 08xxxxxxxx"
                     value={userInfoForm.phone}
                     onChange={e => setUserInfoForm({ ...userInfoForm, phone: e.target.value.replace(/\D/g, '') })}
                     maxLength={10}
@@ -1368,7 +1368,7 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
 
               <div className="borrow-row-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div className="form-field">
-                  <label>วันที่เริ่มจัดกิจกรรม (ต้องอยู่ในช่วงวันยืม-คืน) *</label>
+                  <label>วันที่เริ่มจัดกิจกรรม *</label>
                   <DatePicker
                     selected={moment(userInfoForm.eventStartDate, 'YYYY-MM-DD').toDate()}
                     onChange={(date: Date | null) => {
@@ -1396,7 +1396,7 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
                 </div>
 
                 <div className="form-field">
-                  <label>วันที่สิ้นสุดจัดกิจกรรม (ไม่เกินวันที่คืนอุปกรณ์) *</label>
+                  <label>วันที่สิ้นสุดจัดกิจกรรม *</label>
                   <DatePicker
                     selected={moment(userInfoForm.eventEndDate, 'YYYY-MM-DD').toDate()}
                     onChange={(date: Date | null) => {
@@ -1848,7 +1848,7 @@ export default function InventoryTab({ currentUser }: InventoryTabProps) {
       {viewState === 'my-requests' && (
         <div style={{ maxWidth: '850px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <h3 style={{ margin: 0, fontSize: '20px', color: '#111827' }}>📄 คำขอยืมอุปกรณ์ล่าสุดของฉัน</h3>
+            <h3 style={{ margin: 0, fontSize: '20px', color: '#111827' }}>คำขอยืมอุปกรณ์ล่าสุดของฉัน</h3>
             {!activePendingRequest && (
               <button className="btn-secondary" onClick={() => setViewState(borrowerInfo ? 'catalog' : 'user-form')}>
                 ← ไปหน้าทำรายการยืมใหม่

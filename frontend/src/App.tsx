@@ -127,7 +127,7 @@ function OAuthDirectoryView({ currentUser, lang }: { currentUser: User; lang: 't
           backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #f59e0b',
           display: 'inline-flex', alignItems: 'center', gap: '4px'
         }}>
-          <Crown size={13} /> SUPREME
+          SUPREME
         </span>
       );
     }
@@ -167,7 +167,7 @@ function OAuthDirectoryView({ currentUser, lang }: { currentUser: User; lang: 't
     if (currentUser.role !== 'supreme' || myRank <= targetRank) {
       return (
         <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          <Lock size={13} /> {lang === 'th' ? 'ล็อกสิทธิ์ (เฉพาะ Supreme)' : 'Supreme Only'}
+          <Lock size={13} /> {lang === 'th' ? 'ล็อกสิทธิ์' : 'Locked'}
         </span>
       );
     }
@@ -246,11 +246,11 @@ function OAuthDirectoryView({ currentUser, lang }: { currentUser: User; lang: 't
           <div>
             <h2 style={{ margin: 0, fontSize: '21px', color: '#8b0000', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ShieldCheck size={24} />
-              {lang === 'th' ? 'ฐานข้อมูลรายชื่อสมาชิกทั้งหมด (จากระบบ OAuth)' : 'All OAuth Members Directory'}
+              {lang === 'th' ? 'ฐานข้อมูลรายชื่อทั้งหมด' : 'All Members'}
             </h2>
             <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>
               {lang === 'th'
-                ? `แสดงรายชื่อทั้งหมดในระบบ ${filtered.length} คน • สิทธิ์ของคุณคือ: ${currentUser.role.toUpperCase()} (เฉพาะ SUPREME เท่านั้นที่ปรับเปลี่ยนบทบาทผู้อื่นได้)`
+                ? `แสดงรายชื่อทั้งหมดในระบบ ${filtered.length} คน • สิทธิ์ของคุณคือ: ${currentUser.role.toUpperCase()}`
                 : `Showing ${filtered.length} users from OAuth DB • Your Role: ${currentUser.role.toUpperCase()}`}
             </p>
           </div>
@@ -265,7 +265,7 @@ function OAuthDirectoryView({ currentUser, lang }: { currentUser: User; lang: 't
                 color: facultyFilter === 'engineering' ? '#8b0000' : '#374151'
               }}
             >
-              {facultyFilter === 'all' ? '🌐 แสดงทุกคณะ (All OAuth)' : '⚙️ เฉพาะคณะวิศวกรรมศาสตร์'}
+              {facultyFilter === 'all' ? '🌐 แสดงทุกคณะ' : '⚙️ เฉพาะคณะวิศวกรรมศาสตร์'}
             </button>
 
             {(['all', 'supreme', 'admin', 'user'] as const).map(r => (
@@ -455,7 +455,7 @@ function App() {
     try {
       const dbRole = role === 'supreme' ? 'admin' : role;
       const studentId = role === 'supreme' ? '670610706' : role === 'admin' ? '650610000' : '650610999';
-      const fullName = role === 'supreme' ? 'Supreme Admin' : role === 'admin' ? 'Admin Tester' : 'Student Tester';
+      const fullName = role === 'supreme' ? 'Supreme' : role === 'admin' ? 'Admin Tester' : 'Student Tester';
 
       const response = await axios.post(`${BASE_URL}/api/auth/login`, {
         studentId,
@@ -627,7 +627,7 @@ function App() {
               title="Switch Language (TH / EN)"
             >
               <Globe size={15} color="#8b0000" />
-              {lang === 'th' ? '🇹🇭 ไทย' : '🇬🇧 ENG'}
+              {lang === 'th' ? 'ไทย' : 'ENG'}
             </button>
 
             <div style={{ textAlign: 'right' }}>
@@ -641,10 +641,10 @@ function App() {
                 fontWeight: '700'
               }}>
                 {currentUser.role === 'supreme'
-                  ? (lang === 'th' ? 'แอดมินสูงสุด (Supreme)' : 'Supreme Admin')
+                  ? (lang === 'th' ? 'รุ่นใหญ่' : 'Supreme')
                   : currentUser.role === 'admin'
-                  ? (lang === 'th' ? 'ผู้ดูแลระบบ (Admin)' : 'Administrator')
-                  : (lang === 'th' ? 'นักศึกษา (User)' : 'Student (User)')}
+                  ? (lang === 'th' ? 'ผู้ดูแลระบบ' : 'Administrator')
+                  : (lang === 'th' ? 'นักศึกษา' : 'Student')}
               </div>
             </div>
           </div>

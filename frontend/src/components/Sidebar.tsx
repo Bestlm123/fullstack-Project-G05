@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   LayoutDashboard, Package, ClipboardList, LogOut, GraduationCap,
   Users, Menu, X, Calendar, Database, BookOpen, FileText,
-  HeartHandshake, Clock, ExternalLink, UserCheck, ChevronDown, ChevronRight, Crown
+  HeartHandshake, Clock, ExternalLink, UserCheck, ChevronDown, ChevronRight, Crown, Zap, Brain
 } from 'lucide-react';
 
 interface User {
@@ -31,8 +31,8 @@ const CLUB_LOGO_URL = '';
 const CUSTOM_EXTERNAL_DROPDOWNS = [
   {
     id: 'academic_services',
-    categoryTh: 'บริการวิชาการ (SD SSO)',
-    categoryEn: 'Academic Services',
+    categoryTh: 'บริการสำหรับนักศึกษา',
+    categoryEn: 'STUDENT SUPPORTS',
     defaultOpen: false,
     links: [
       {
@@ -55,15 +55,7 @@ const CUSTOM_EXTERNAL_DROPDOWNS = [
         subtitleEn: 'Official Document Request',
         url: 'https://student.eng.cmu.ac.th/dashboard',
         icon: FileText
-      }
-    ]
-  },
-  {
-    id: 'student_activities',
-    categoryTh: 'พัฒนานักศึกษา (SD SSO)',
-    categoryEn: 'Student Support',
-    defaultOpen: false,
-    links: [
+      },
       {
         title: 'Activity Calendar',
         subtitleTh: 'ปฏิทินกิจกรรมสำหรับนักศึกษา',
@@ -85,6 +77,28 @@ const CUSTOM_EXTERNAL_DROPDOWNS = [
         url: 'https://student.eng.cmu.ac.th/dashboard',
         icon: Clock
       }
+    ]
+  },
+  {
+    id: 'LEARNING PLATFORMS',
+    categoryTh: 'แพลตฟอร์มการเรียนรู้',
+    categoryEn: 'LEARNING PLATFORMS',
+    defaultOpen: false,
+    links: [
+      {
+        title: 'Enginx',
+        subtitleTh: 'การเรียนรู้จากประสบการณ์ทางวิศวกรรม',
+        subtitleEn: 'Engineering Experiencetial Learning',
+        url: 'https://enginx.eng.cmu.ac.th/events',
+        icon: Zap
+      },
+      {
+        title: 'Upskill Platform',
+        subtitleTh: 'แพลตฟอร์มพัฒนาทักษะ',
+        subtitleEn: 'Soft, Engineering, and Language Skills',
+        url: 'https://upskill.eng.cmu.ac.th/login',
+        icon: Brain
+      },
     ]
   }
 ];
@@ -266,7 +280,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
               <GraduationCap size={32} color="#8b0000" />
             )}
             <div>
-              <h2 style={{ color: '#8b0000', margin: 0, fontSize: '18px', fontWeight: '800', lineHeight: 1.1 }}>SMO ENT</h2>
+              <h2 style={{ color: '#8b0000', margin: 0, fontSize: '20px', fontWeight: '800', lineHeight: 0.8 }}>SMO ENT</h2>
               <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600 }}>Engineering CMU</span>
             </div>
           </div>
@@ -285,7 +299,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
               onClick={() => toggleGroup('main_club_menu')}
               className={`smo-dropdown-header ${openGroups.main_club_menu ? 'open' : ''}`}
             >
-              <span>{lang === 'th' ? 'เมนูหลักสโมสรฯ' : 'Main Club Menu'}</span>
+              <span>{lang === 'th' ? 'เมนูหลัก' : 'MAIN'}</span>
               {openGroups.main_club_menu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
 
@@ -297,7 +311,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <LayoutDashboard size={17} />
-                    <span>{lang === 'th' ? 'หน้าหลักประชาสัมพันธ์' : 'Home & Announcements'}</span>
+                    <span>{lang === 'th' ? 'หน้าหลัก' : 'Home Page'}</span>
                   </div>
                 </button>
 
@@ -307,7 +321,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Users size={17} />
-                    <span>{lang === 'th' ? 'สมัครสต๊าฟ & เช็คชื่อ QR' : 'Staff & QR Attendance'}</span>
+                    <span>{lang === 'th' ? 'สตาฟ' : 'Staff'}</span>
                   </div>
                 </button>
 
@@ -318,7 +332,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <UserCheck size={17} />
-                      <span>{lang === 'th' ? 'ฐานข้อมูลสมาชิก (OAuth)' : 'OAuth Member Directory'}</span>
+                      <span>{lang === 'th' ? 'จัดการบทบาท ' : 'Member Directory'}</span>
                     </div>
                   </button>
                 )}
@@ -333,7 +347,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
               onClick={() => toggleGroup('borrowing_menu')}
               className={`smo-dropdown-header ${openGroups.borrowing_menu ? 'open' : ''}`}
             >
-              <span>{lang === 'th' ? 'บริการยืม-คืนพัสดุ' : 'Equipment Borrowing'}</span>
+              <span>{lang === 'th' ? 'บริการยืม-คืนพัสดุ' : 'EQUIPMENT BORROWING'}</span>
               {openGroups.borrowing_menu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
 
@@ -389,7 +403,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
                           className="smo-menu-item"
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-                            <IconComp size={16} style={{ flexShrink: 0, color: '#8b0000' }} />
+                            <IconComp size={16} style={{ flexShrink: 0, color: '#374151' }} />
                             <div style={{ overflow: 'hidden' }}>
                               <div style={{ fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                                 {link.title}

@@ -92,9 +92,8 @@ const convertFileToBase64 = (file: File, maxDim = 420, quality = 0.55): Promise<
 const getStudentYear = (studentId: string): string => {
   const prefix = parseInt(studentId.substring(0, 2), 10);
   if (isNaN(prefix)) return '1';
-  const year = 69 - prefix;
-  if (year <= 1) return '1';
-  if (year >= 4) return '4';
+  const year = 70 - prefix;
+  if (year <= 1) return 'ไปเรื่อยละ';
   return String(year);
 };
 
@@ -214,7 +213,7 @@ interface RoleFormItem {
   lineQrUrl: string;
 }
 
-// 🌟 ข้อ 3: ฟังก์ชันตรวจสอบว่ากิจกรรมนี้หมดเขตช่วงเวลารับสมัครสต๊าฟหรือยัง
+// 🌟 ข้อ 3: ฟังก์ชันตรวจสอบว่ากิจกรรมนี้หมดเขตช่วงเวลารับสมัครสตาฟหรือยัง
 const checkIsRecruitmentExpired = (ev: StaffEvent): boolean => {
   if (ev.status !== 'open') return true;
   if (!ev.recruitEndDate) return false;
@@ -366,7 +365,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
       if (Array.isArray(appRes.data)) {
         setApplicationsList(appRes.data);
 
-        // เด้งหน้าต่างให้สต๊าฟกรอกฟีดแบคของกิจกรรมนั้นทันทีที่สแกน Check-out ออกงาน
+        // เด้งหน้าต่างให้สตาฟกรอกฟีดแบคของกิจกรรมนั้นทันทีที่สแกน Check-out ออกงาน
         const myJustCheckedOut = (appRes.data as StaffApplication[]).find(
           a => a.studentId === studentId && a.attendanceStatus === 'checked_out' && !a.feedbackSubmitted
         );
@@ -457,7 +456,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
               await refreshEventsAndApps();
               setFeedbackModal({ show: true, type: 'success', message: res.data.message });
             } catch (error: unknown) {
-              let errMsg = 'รูปแบบ QR ไม่ถูกต้อง หรือไม่พบข้อมูลสต๊าฟ';
+              let errMsg = 'รูปแบบ QR ไม่ถูกต้อง หรือไม่พบข้อมูลสตาฟ';
               if (axios.isAxiosError(error) && error.response?.data?.error) errMsg = error.response.data.error;
               setFeedbackModal({ show: true, type: 'error', message: errMsg });
             }
@@ -559,7 +558,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
         phoneNumber: cleanPhone
       });
       setHasProfile(true);
-      setFeedbackModal({ show: true, type: 'success', message: 'บันทึกข้อมูลโปรไฟล์สำหรับสมัครสต๊าฟเรียบร้อยแล้ว!' });
+      setFeedbackModal({ show: true, type: 'success', message: 'บันทึกข้อมูลโปรไฟล์สำหรับสมัครสตาฟเรียบร้อยแล้ว!' });
       setSubTab('events');
       await refreshEventsAndApps();
     } catch (error: unknown) {
@@ -571,12 +570,12 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
 
   const handleApplyRole = async (ev: StaffEvent, role: EventRole) => {
     if (checkIsRecruitmentExpired(ev)) {
-      setFeedbackModal({ show: true, type: 'error', message: 'ขออภัย กิจกรรมนี้หมดเวลาเปิดรับสมัครสต๊าฟแล้วครับ' });
+      setFeedbackModal({ show: true, type: 'error', message: 'ขออภัย กิจกรรมนี้หมดเวลาเปิดรับสมัครสตาฟแล้วครับ' });
       return;
     }
 
     if (checkIsRecruitmentNotStartedYet(ev)) {
-      setFeedbackModal({ show: true, type: 'error', message: 'กิจกรรมนี้ยังไม่ถึงเวลาเปิดรับสมัครสต๊าฟครับ' });
+      setFeedbackModal({ show: true, type: 'error', message: 'กิจกรรมนี้ยังไม่ถึงเวลาเปิดรับสมัครสตาฟครับ' });
       return;
     }
 
@@ -585,7 +584,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
       setFeedbackModal({
         show: true,
         type: 'error',
-        message: 'กรุณากรอกข้อมูลโปรไฟล์สำหรับสต๊าฟ (เช่น เสื้อช็อป, แพ้อาหาร/ยา) ให้ครบก่อนกดสมัครครับ'
+        message: 'กรุณากรอกข้อมูลโปรไฟล์สำหรับสตาฟ (เช่น เสื้อช็อป, แพ้อาหาร/ยา) ให้ครบก่อนกดสมัครครับ'
       });
       setSubTab('profile');
       return;
@@ -621,15 +620,15 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
   const handleCancelStaff = (appId: number, eventTitle?: string) => {
     setConfirmModal({
       show: true,
-      title: 'ยืนยันการยกเลิกการเป็นสต๊าฟ',
-      message: `คุณต้องการยกเลิกการเป็นสต๊าฟในกิจกรรม "${eventTitle || ''}" และคืนโควต้าให้ระบบใช่หรือไม่?`,
+      title: 'ยืนยันการยกเลิกการเป็นสตาฟ',
+      message: `คุณต้องการยกเลิกการเป็นสตาฟในกิจกรรม "${eventTitle || ''}" และคืนโควต้าให้ระบบใช่หรือไม่?`,
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, show: false }));
         try {
           await axios.post(`${API_URL}/events/cancel`, { applicationId: appId });
           await refreshEventsAndApps();
           setConfirmationModal(null);
-          setFeedbackModal({ show: true, type: 'success', message: 'ยกเลิกการเป็นสต๊าฟและคืนโควต้าให้ฝ่ายเรียบร้อยแล้ว' });
+          setFeedbackModal({ show: true, type: 'success', message: 'ยกเลิกการเป็นสตาฟและคืนโควต้าให้ฝ่ายเรียบร้อยแล้ว' });
         } catch (error: unknown) {
           let msg = 'ไม่สามารถยกเลิกได้';
           if (axios.isAxiosError(error) && error.response?.data?.error) msg = error.response.data.error;
@@ -718,7 +717,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
     const recStart = new Date(`${eventForm.recruitStartDate}T${eventForm.recruitStartTime}:00`);
     const recEnd = new Date(`${eventForm.recruitEndDate}T${eventForm.recruitEndTime}:00`);
     if (recEnd <= recStart) {
-      setFeedbackModal({ show: true, type: 'error', message: 'วัน-เวลาปิดรับสมัครสต๊าฟ ต้องอยู่หลังจากวัน-เวลาเริ่มเปิดรับสมัครครับ!' });
+      setFeedbackModal({ show: true, type: 'error', message: 'วัน-เวลาปิดรับสมัครสตาฟ ต้องอยู่หลังจากวัน-เวลาเริ่มเปิดรับสมัครครับ!' });
       return;
     }
 
@@ -728,7 +727,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
         setFeedbackModal({ show: true, type: 'success', message: 'บันทึกการแก้ไขกิจกรรมเรียบร้อยแล้ว!' });
       } else {
         await axios.post(`${API_URL}/events`, eventForm);
-        setFeedbackModal({ show: true, type: 'success', message: 'สร้างกิจกรรมเปิดรับสมัครสต๊าฟเรียบร้อยแล้ว!' });
+        setFeedbackModal({ show: true, type: 'success', message: 'สร้างกิจกรรมเปิดรับสมัครสตาฟเรียบร้อยแล้ว!' });
       }
       setIsEventModalOpen(false);
       await refreshEventsAndApps();
@@ -753,7 +752,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
         <ShieldAlert size={64} color="#dc2626" style={{ margin: '0 auto 16px' }} />
         <h2 style={{ color: '#991b1b', margin: '0 0 12px 0' }}>สงวนสิทธิ์เฉพาะนักศึกษาคณะวิศวกรรมศาสตร์</h2>
         <p style={{ color: '#4b5563', fontSize: '15px', lineHeight: '1.6' }}>
-          บัญชีของคุณ ({studentId} - {currentUser.faculty}) ไม่ได้สังกัดคณะวิศวกรรมศาสตร์ จึงไม่สามารถเข้าใช้งานระบบรับสมัครสต๊าฟของสโมสรนักศึกษาคณะวิศวกรรมศาสตร์ได้ครับ
+          บัญชีของคุณ ({studentId} - {currentUser.faculty}) ไม่ได้สังกัดคณะวิศวกรรมศาสตร์ จึงไม่สามารถเข้าใช้งานระบบรับสมัครสตาฟของสโมสรนักศึกษาคณะวิศวกรรมศาสตร์ได้ครับ
         </p>
       </div>
     );
@@ -800,14 +799,14 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
         </div>
       )}
 
-      {/* Modal บัตร QR Code ประจำตัวสต๊าฟ */}
+      {/* Modal บัตร QR Code ประจำตัวสตาฟ */}
       {personalQrModal && personalQrModal.show && (
         <div className="modal-overlay" style={{ zIndex: 1150, backgroundColor: 'rgba(0,0,0,0.65)' }}>
           <div className="modal-content" style={{ maxWidth: '420px', width: '92%', textAlign: 'center', padding: '28px 24px', borderRadius: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn-close" onClick={() => setPersonalQrModal(null)}><X size={20} /></button>
             </div>
-            <h3 style={{ margin: '0 0 6px 0', color: '#8b0000', fontSize: '20px' }}>บัตร QR Code ประจำตัวสต๊าฟ</h3>
+            <h3 style={{ margin: '0 0 6px 0', color: '#8b0000', fontSize: '20px' }}>บัตร QR Code ประจำตัวสตาฟ</h3>
             <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#4b5563' }}>
               โปรดแสดง QR Code นี้ให้ผู้ดูแลระบบ (Admin) สแกนเพื่อเข้างานและออกงาน
             </p>
@@ -908,7 +907,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
         <div>
           <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#111827', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-            <Users size={24} color="#8b0000" /> {lang === 'th' ? 'ระบบรับสมัครสต๊าฟ & เช็คชื่อเข้า-ออกงาน' : 'Staff Recruitment & QR Attendance'}
+            <Users size={24} color="#8b0000" /> {lang === 'th' ? 'ระบบรับสมัครสตาฟ & เช็คชื่อเข้า-ออกงาน' : 'Staff Recruitment & QR Attendance'}
           </h2>
           <div style={{ fontSize: '13px', color: '#166534', fontWeight: '600', marginTop: '4px' }}>
             ✓ ยืนยันตัวตน: นักศึกษาคณะวิศวกรรมศาสตร์ (รหัส {studentId} • ชั้นปีที่ {currentStudentYear})
@@ -940,7 +939,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                 display: 'flex', alignItems: 'center', gap: '6px'
               }}
             >
-              <Edit size={15} /> {hasProfile ? 'แก้ไขโปรไฟล์สต๊าฟ' : '⚠️ กรอกโปรไฟล์ก่อนสมัคร'}
+              <Edit size={15} /> {hasProfile ? 'แก้ไขโปรไฟล์สตาฟ' : '⚠️ กรอกโปรไฟล์ก่อนสมัคร'}
             </button>
           )}
 
@@ -972,7 +971,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                   display: 'flex', alignItems: 'center', gap: '6px'
                 }}
               >
-                <ScanLine size={15} /> สแกน QR เข้า-ออกงาน
+                <ScanLine size={15} /> สแกน QR
               </button>
               <button
                 onClick={() => { setIsStaffCameraOpen(false); setSelectedArchiveEvent(null); setSubTab('archive'); }}
@@ -1002,7 +1001,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
         <div style={{ backgroundColor: '#fffbeb', borderLeft: '4px solid #d97706', padding: '16px 20px', borderRadius: '8px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#92400e', fontSize: '14px' }}>
             <AlertCircle size={22} color="#d97706" />
-            <span><strong>แจ้งเตือน:</strong> กรุณากรอกข้อมูลส่วนตัวสำหรับสต๊าฟ (ชื่อเล่น, ภาควิชา, เสื้อช็อป, อาหารที่แพ้) ครั้งเดียวก่อนกดสมัครกิจกรรมครับ</span>
+            <span><strong>แจ้งเตือน:</strong> กรุณากรอกข้อมูลส่วนตัวสำหรับสตาฟ (ชื่อเล่น, ภาควิชา, เสื้อช็อป, อาหารที่แพ้) ครั้งเดียวก่อนกดสมัครกิจกรรมครับ</span>
           </div>
           <button className="btn-primary" style={{ backgroundColor: '#d97706', borderColor: '#d97706', fontSize: '13px', padding: '8px 16px' }} onClick={() => setSubTab('profile')}>
             ไปหน้ากรอกโปรไฟล์ →
@@ -1017,7 +1016,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))', gap: '24px' }}>
           {eventsList.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', backgroundColor: 'white', padding: '60px 20px', borderRadius: '12px', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb' }}>
-              ยังไม่มีกิจกรรมที่เปิดรับสมัครสต๊าฟในขณะนี้
+              ยังไม่มีกิจกรรมที่เปิดรับสมัครสตาฟในขณะนี้
             </div>
           ) : (
             eventsList.map(ev => {
@@ -1038,7 +1037,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                     display: 'flex',
                     flexDirection: 'column',
                     boxShadow: '0 4px 6px rgba(0,0,0,0.04)',
-                    // 🌟 เปลี่ยนการ์ดเป็นสีโทนขาว-ดำเมื่อหมดเขตช่วงเวลารับสมัครสต๊าฟ
+                    // 🌟 เปลี่ยนการ์ดเป็นสีโทนขาว-ดำเมื่อหมดเขตช่วงเวลารับสมัครสตาฟ
                     filter: isExpired ? 'grayscale(100%)' : 'none',
                     opacity: isExpired ? 0.82 : 1,
                     transition: 'all 0.3s ease'
@@ -1070,7 +1069,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                   <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#111827' }}>{ev.title}</h3>
 
-                    {/* แสดงวัน-เวลาจัดกิจกรรม และช่วงเวลาเปิดรับสมัครสต๊าฟ */}
+                    {/* แสดงวัน-เวลาจัดกิจกรรม และช่วงเวลาเปิดรับสมัครสตาฟ */}
                     <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '10px 12px', fontSize: '12px', color: '#374151', marginBottom: '12px', lineHeight: 1.6 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700', color: '#111827' }}>
                         <Calendar size={14} color="#8b0000" />
@@ -1078,7 +1077,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isExpired ? '#dc2626' : '#4b5563' }}>
                         <Clock size={14} color="#8b0000" />
-                        รับสมัครสต๊าฟ: {formatShortThaiDate(ev.recruitStartDate)} ({ev.recruitStartTime || '08:00'} น.) ถึง {formatShortThaiDate(ev.recruitEndDate)} ({ev.recruitEndTime || '23:59'} น.)
+                        รับสมัครสตาฟ: {formatShortThaiDate(ev.recruitStartDate)} ({ev.recruitStartTime || '08:00'} น.) ถึง {formatShortThaiDate(ev.recruitEndDate)} ({ev.recruitEndTime || '23:59'} น.)
                       </div>
                     </div>
 
@@ -1092,7 +1091,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                     {!isAdmin && myAppInThisEvent && (
                       <div style={{ backgroundColor: '#dcfce7', border: '1px solid #86efac', padding: '12px', borderRadius: '10px', marginBottom: '14px' }}>
                         <div style={{ color: '#166534', fontWeight: 'bold', fontSize: '14px' }}>
-                          ✓ คุณเป็นสต๊าฟฝ่าย: {myRoleObj?.roleName || myAppInThisEvent.roleName}
+                          ✓ คุณเป็นสตาฟฝ่าย: {myRoleObj?.roleName || myAppInThisEvent.roleName}
                         </div>
                         <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
                           <button
@@ -1118,7 +1117,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                               onClick={() => handleCancelStaff(myAppInThisEvent.id, ev.title)}
                               style={{ width: '100%', backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', marginTop: '4px' }}
                             >
-                              ยกเลิกการเป็นสต๊าฟ
+                              ยกเลิกการเป็นสตาฟ
                             </button>
                           )}
                         </div>
@@ -1175,7 +1174,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
       )}
 
       {/* =====================================================================
-          🌟 ข้อ 4: คลังข้อมูลส่งต่อรุ่นถัดไป (แยกตามแฟ้มกิจกรรม -> แบ่งหมวดเอกสาร & ฟีดแบคสต๊าฟ)
+          🌟 ข้อ 4: คลังข้อมูลส่งต่อรุ่นถัดไป (แยกตามแฟ้มกิจกรรม -> แบ่งหมวดเอกสาร & ฟีดแบคสตาฟ)
          ===================================================================== */}
       {isAdmin && subTab === 'archive' && (
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -1184,10 +1183,10 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
             <div style={{ backgroundColor: 'white', padding: '28px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
               <div style={{ marginBottom: '20px', borderBottom: '2px solid #f3f4f6', paddingBottom: '16px' }}>
                 <h3 style={{ margin: '0 0 6px 0', fontSize: '22px', color: '#8b0000', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <FolderArchive size={26} /> คลังข้อมูลกิจกรรมสโมสรฯ (แยกตามหมวดหมู่กิจกรรม)
+                  <FolderArchive size={26} /> คลังข้อมูลกิจกรรมสโมสรฯ
                 </h3>
                 <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>
-                  เลือกคลิกที่แฟ้มกิจกรรมเพื่อดูหรือเพิ่ม <strong>1) เอกสารสรุปงาน</strong> และ <strong>2) ฟีดแบคของสต๊าฟที่เช็คเอาท์จากกิจกรรมนั้นๆ</strong>
+                  เลือกคลิกที่แฟ้มกิจกรรมเพื่อดูหรือเพิ่มเอกสารสรุปงาน/ฟีดแบคของสตาฟ
                 </p>
               </div>
 
@@ -1239,7 +1238,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                               <div style={{ fontSize: '18px', fontWeight: '800', color: '#1e40af' }}>{evDocsCount} ไฟล์</div>
                             </div>
                             <div style={{ backgroundColor: 'white', padding: '10px', borderRadius: '8px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                              <div style={{ fontSize: '12px', color: '#6b7280' }}>⭐ ฟีดแบคสต๊าฟ</div>
+                              <div style={{ fontSize: '12px', color: '#6b7280' }}>⭐ ฟีดแบคสตาฟ</div>
                               <div style={{ fontSize: '18px', fontWeight: '800', color: '#d97706' }}>{evFeedbacks.length} คน ({avgRating}★)</div>
                             </div>
                           </div>
@@ -1255,7 +1254,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
               )}
             </div>
           ) : (
-            /* เมื่อกดเข้ามาในแฟ้มกิจกรรม: แบ่งเป็น 2 หมวดหมู่ชัดเจน (1. ฟีดแบคของสต๊าฟ / 2. รวมเอกสารสรุปงาน) */
+            /* เมื่อกดเข้ามาในแฟ้มกิจกรรม: แบ่งเป็น 2 หมวดหมู่ชัดเจน (1. ฟีดแบคของสตาฟ / 2. รวมเอกสารสรุปงาน) */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ backgroundColor: 'white', padding: '22px 28px', borderRadius: '16px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
                 <div>
@@ -1285,7 +1284,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                       display: 'flex', alignItems: 'center', gap: '6px'
                     }}
                   >
-                    <Star size={17} /> หมวดฟีดแบคของสต๊าฟ ({feedbacksList.filter(f => Number(f.eventId) === selectedArchiveEvent.id).length})
+                    <Star size={17} /> หมวดฟีดแบคของสตาฟ ({feedbacksList.filter(f => Number(f.eventId) === selectedArchiveEvent.id).length})
                   </button>
                   <button
                     onClick={() => setArchiveCategoryTab('documents')}
@@ -1302,11 +1301,11 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                 </div>
               </div>
 
-              {/* หมวดที่ 1: รวบรวมฟีดแบคของสต๊าฟในกิจกรรมนี้ */}
+              {/* หมวดที่ 1: รวบรวมฟีดแบคของสตาฟในกิจกรรมนี้ */}
               {archiveCategoryTab === 'feedbacks' && (
                 <div style={{ backgroundColor: 'white', padding: '28px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
                   <h4 style={{ margin: '0 0 18px 0', fontSize: '18px', color: '#111827' }}>
-                    ⭐ รายการฟีดแบคและข้อเสนอแนะจากสต๊าฟหลังเช็คเอาท์ ({selectedArchiveEvent.title})
+                    ⭐ รายการฟีดแบคและข้อเสนอแนะจากสตาฟหลังเช็คเอาท์ ({selectedArchiveEvent.title})
                   </h4>
 
                   {(() => {
@@ -1314,7 +1313,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                     if (evFeedbacks.length === 0) {
                       return (
                         <div style={{ textAlign: 'center', padding: '48px 20px', color: '#6b7280', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
-                          ยังไม่มีฟีดแบคจากสต๊าฟในกิจกรรมนี้ (ฟีดแบคจะถูกส่งเข้ามาอัตโนมัติเมื่อสต๊าฟสแกน QR Check-out ออกงาน)
+                          ยังไม่มีฟีดแบคจากสตาฟในกิจกรรมนี้ (ฟีดแบคจะถูกส่งเข้ามาอัตโนมัติเมื่อสตาฟสแกน QR Check-out ออกงาน)
                         </div>
                       );
                     }
@@ -1429,11 +1428,11 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
         </div>
       )}
 
-      {/* แท็บสแกน QR เข้า-ออกงานของสต๊าฟ (สำหรับ Admin) */}
+      {/* แท็บสแกน QR เข้า-ออกงานของสตาฟ (สำหรับ Admin) */}
       {isAdmin && subTab === 'scanner' && (
         <div style={{ maxWidth: '720px', margin: '0 auto', backgroundColor: 'white', padding: '28px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
           <h3 style={{ marginTop: 0, color: '#8b0000', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ScanLine size={24} /> สแกนบัตร QR Code ประจำตัวสต๊าฟ (เข้างาน / ออกงาน)
+            <ScanLine size={24} /> สแกนบัตร QR Code ประจำตัวสตาฟ
           </h3>
           <p style={{ fontSize: '14px', color: '#4b5563', marginBottom: '20px' }}>
             • <strong>สแกนครั้งที่ 1:</strong> บันทึกเวลาเข้าปฏิบัติงาน (Check-in)<br />
@@ -1457,7 +1456,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
               }}
             >
               {isStaffCameraOpen ? <CameraOff size={20} /> : <Camera size={20} />}
-              {isStaffCameraOpen ? 'ปิดกล้องสแกน' : '📷 เปิดกล้องสแกนบัตร QR สต๊าฟ'}
+              {isStaffCameraOpen ? 'ปิดกล้องสแกน' : 'เปิดกล้องสแกน QR สตาฟ'}
             </button>
 
             {isStaffCameraOpen && (
@@ -1471,7 +1470,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
             <input
               type="text"
               className="form-input"
-              placeholder="หรือวางรหัส QR เช่น STAFF|1|1|670610706..."
+              placeholder="กรอกรหัสนักศึกษา"
               value={manualStaffQrInput}
               onChange={e => setManualStaffQrInput(e.target.value)}
               style={{ flex: 1 }}
@@ -1481,7 +1480,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
             </button>
           </div>
 
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>รายชื่อสต๊าฟทั้งหมด (เฉพาะ Admin กดเช็คอิน/เช็คเอาท์)</h4>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>รายชื่อสตาฟทั้งหมด</h4>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
@@ -1567,7 +1566,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
 
               <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '12px 16px', fontSize: '13px', color: '#92400e', marginBottom: '16px', lineHeight: 1.7 }}>
                 <div><strong>📅 วันและเวลาจัดกิจกรรม:</strong> {formatShortThaiDate(detailEvent.eventDate)} เวลา {detailEvent.eventStartTime || '08:00'} - {detailEvent.eventEndTime || '17:00'} น.</div>
-                <div><strong>⏰ ช่วงเวลาเปิดรับสมัครสต๊าฟ:</strong> {formatShortThaiDate(detailEvent.recruitStartDate)} ({detailEvent.recruitStartTime || '08:00'} น.) ถึง {formatShortThaiDate(detailEvent.recruitEndDate)} ({detailEvent.recruitEndTime || '23:59'} น.)</div>
+                <div><strong>⏰ ช่วงเวลาเปิดรับสมัครสตาฟ:</strong> {formatShortThaiDate(detailEvent.recruitStartDate)} ({detailEvent.recruitStartTime || '08:00'} น.) ถึง {formatShortThaiDate(detailEvent.recruitEndDate)} ({detailEvent.recruitEndTime || '23:59'} น.)</div>
               </div>
 
               <p style={{ color: '#374151', fontSize: '15px', lineHeight: '1.7', backgroundColor: '#f9fafb', padding: '16px', borderRadius: '10px', border: '1px solid #e5e7eb', marginBottom: '24px', whiteSpace: 'pre-line' }}>
@@ -1664,12 +1663,12 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
         </div>
       )}
 
-      {/* หน้าต่างยืนยันการเป็นสต๊าฟ + แสดง QR Code เข้ากลุ่มไลน์ */}
+      {/* หน้าต่างยืนยันการเป็นสตาฟ + แสดง QR Code เข้ากลุ่มไลน์ */}
       {confirmationModal && confirmationModal.show && (
         <div className="modal-overlay" style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div className="modal-content" style={{ maxWidth: '620px', width: '94%', textAlign: 'center', padding: '32px 24px', borderRadius: '16px', maxHeight: '90vh', overflowY: 'auto' }}>
             <CheckCircle size={60} color="#16a34a" style={{ margin: '0 auto 12px' }} />
-            <h2 style={{ margin: '0 0 8px 0', color: '#166534', fontSize: '24px' }}>ยืนยันการเป็นสต๊าฟสำเร็จ!</h2>
+            <h2 style={{ margin: '0 0 8px 0', color: '#166534', fontSize: '24px' }}>ยืนยันการเป็นสตาฟสำเร็จ!</h2>
             <p style={{ margin: '0 0 20px 0', color: '#374151', fontSize: '15px' }}>
               กิจกรรม: <strong>{confirmationModal.event.title}</strong><br />
               คุณได้สังกัดฝ่าย: <strong style={{ color: '#8b0000' }}>ฝ่าย{confirmationModal.role.roleName}</strong> เรียบร้อยแล้ว
@@ -1677,7 +1676,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
 
             <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
               <h3 style={{ margin: '0 0 16px 0', fontSize: '17px', color: '#166534', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <QrCode size={20} /> กรุณาสแกน QR Code เพื่อเข้ากลุ่ม LINE สต๊าฟ
+                <QrCode size={20} /> กรุณาสแกน QR Code เพื่อเข้ากลุ่ม LINE สตาฟ
               </h3>
 
               <div style={{ display: 'grid', gridTemplateColumns: confirmationModal.event.qrCount === 2 ? 'repeat(auto-fit, minmax(210px, 1fr))' : '1fr', gap: '20px', justifyItems: 'center' }}>
@@ -1782,7 +1781,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                     </div>
                   </div>
                   <div style={{ backgroundColor: '#fef2f2', border: '2px solid #8b0000', padding: '12px 24px', borderRadius: '12px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '13px', color: '#8b0000', fontWeight: 'bold' }}>จำนวนสต๊าฟที่มาสมัครทั้งหมด / ที่ต้องการ</div>
+                    <div style={{ fontSize: '13px', color: '#8b0000', fontWeight: 'bold' }}>จำนวนสตาฟที่มาสมัครทั้งหมด / ที่ต้องการ</div>
                     <div style={{ fontSize: '26px', fontWeight: 'bold', color: '#111827' }}>
                       {totalAppliedAll} / {totalQuotaAll} คน
                     </div>
@@ -1792,7 +1791,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                 {!selectedDashboardRole ? (
                   <>
                     <h4 style={{ margin: '0 0 16px 0', fontSize: '17px', color: '#111827' }}>
-                      แยกตามฝ่าย (คลิกที่ฝ่ายเพื่อดูรายชื่อและข้อมูลสต๊าฟในฝ่ายนั้น)
+                      แยกตามฝ่าย (คลิกที่ฝ่ายเพื่อดูรายชื่อและข้อมูลสตาฟในฝ่ายนั้น)
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
                       {(currentEv.roles || []).map(role => {
@@ -1831,7 +1830,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
 
                     <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #e5e7eb' }}>
                       <h4 style={{ margin: '0 0 4px 0', fontSize: '19px', color: '#8b0000' }}>
-                        รายชื่อสต๊าฟ: ฝ่าย{selectedDashboardRole.roleName}
+                        รายชื่อสตาฟ: ฝ่าย{selectedDashboardRole.roleName}
                       </h4>
                       <div style={{ fontSize: '14px', color: '#4b5563' }}>
                         หน้าที่: {selectedDashboardRole.description || '-'} | สมัครแล้ว {eventApps.filter(a => a.roleId === selectedDashboardRole.id).length} / {selectedDashboardRole.totalQuota} คน
@@ -1894,12 +1893,12 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
         </div>
       )}
 
-      {/* ฟอร์มข้อมูลโปรไฟล์สต๊าฟ */}
+      {/* ฟอร์มข้อมูลโปรไฟล์สตาฟ */}
       {subTab === 'profile' && (
         <div style={{ maxWidth: '750px', margin: '0 auto', backgroundColor: 'white', padding: '28px', borderRadius: '14px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '12px' }}>
             <UserCheck size={24} color="#8b0000" />
-            <h3 style={{ margin: 0, fontSize: '20px' }}>ข้อมูลส่วนตัวสำหรับผู้สมัครสต๊าฟคณะวิศวะฯ</h3>
+            <h3 style={{ margin: 0, fontSize: '20px' }}>ข้อมูลส่วนตัวสำหรับผู้สมัครสตาฟคณะวิศวะฯ</h3>
           </div>
 
           <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1962,33 +1961,33 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
             </div>
 
             <button type="submit" className="btn-primary" style={{ padding: '14px', fontSize: '16px', fontWeight: 'bold' }}>
-              บันทึกข้อมูลโปรไฟล์สต๊าฟ
+              บันทึกข้อมูลโปรไฟล์สตาฟ
             </button>
           </form>
         </div>
       )}
 
       {/* =====================================================================
-          🌟 ข้อ 3: Modal ตั้งกิจกรรม / แก้ไขกิจกรรม (เพิ่มตั้งวันที่-เวลาจัดกิจกรรม และช่วงเวลาเปิดรับสมัครสต๊าฟ)
+          🌟 ข้อ 3: Modal ตั้งกิจกรรม / แก้ไขกิจกรรม (เพิ่มตั้งวันที่-เวลาจัดกิจกรรม และช่วงเวลาเปิดรับสมัครสตาฟ)
          ===================================================================== */}
       {isEventModalOpen && isAdmin && (
         <div className="modal-overlay" style={{ zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.65)' }}>
           <div className="modal-content" style={{ maxWidth: '780px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="modal-header">
-              <h3>{editingEventId ? '✏️ แก้ไขกิจกรรมรับสมัครสต๊าฟ' : '✨ ตั้งกิจกรรมรับสมัครสต๊าฟใหม่'}</h3>
+              <h3>{editingEventId ? '✏️ แก้ไขกิจกรรมรับสมัครสตาฟ' : '✨ ตั้งกิจกรรมรับสมัครสตาฟใหม่'}</h3>
               <button className="btn-close" onClick={() => setIsEventModalOpen(false)}><X size={20} /></button>
             </div>
 
             <form onSubmit={handleSaveEventSubmit} className="modal-form" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div className="form-field">
                 <label>ชื่อกิจกรรม *</label>
-                <input required type="text" className="form-input" placeholder="เช่น รับน้องขึ้นดอย 2569, กีฬาเกียร์..." value={eventForm.title} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} />
+                <input required type="text" className="form-input" placeholder="เช่น รับน้องขึ้นดอย 2569 , รับน้องร้องเพลง" value={eventForm.title} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} />
               </div>
 
               {/* 🌟 ส่วนกำหนดวันที่จัดกิจกรรม และ เวลาเริ่ม - เวลาจบ */}
               <div style={{ backgroundColor: '#fef2f2', padding: '16px', borderRadius: '10px', border: '1px solid #fecaca' }}>
                 <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px', color: '#8b0000' }}>
-                  📅 กำหนดวันและเวลาจัดกิจกรรมจริง *
+                  วันที่จัดกิจกรรม*
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                   <div className="form-field">
@@ -2024,10 +2023,10 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                 </div>
               </div>
 
-              {/* 🌟 ส่วนกำหนดช่วงเวลาที่เปิดรับสมัครสต๊าฟ (หากพ้นกำหนดนี้ การ์ดจะเปลี่ยนเป็นขาว-ดำอัตโนมัติ) */}
+              {/* 🌟 ส่วนกำหนดช่วงเวลาที่เปิดรับสมัครสตาฟ (หากพ้นกำหนดนี้ การ์ดจะเปลี่ยนเป็นขาว-ดำอัตโนมัติ) */}
               <div style={{ backgroundColor: '#fffbeb', padding: '16px', borderRadius: '10px', border: '1px solid #fde68a' }}>
                 <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px', color: '#92400e' }}>
-                  ⏰ กำหนดช่วงเวลาเปิดรับสมัครสต๊าฟ (เมื่อพ้นเวลานี้ การ์ดกิจกรรมจะเปลี่ยนเป็นสีขาว-ดำอัตโนมัติ) *
+                  กำหนดช่วงเวลาเปิดรับสมัครสตาฟ*
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
                   <div className="form-field">
@@ -2074,9 +2073,9 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
               </div>
 
               <div className="form-field">
-                <label>อัปโหลดรูปภาพหน้าปกกิจกรรม (เก็บลง Database)</label>
+                <label>อัปโหลดรูปภาพกิจกรรม</label>
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', border: '2px dashed #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: '#f9fafb', fontWeight: '600' }}>
-                  <Upload size={18} color="#8b0000" /> คลิกเลือกไฟล์รูปภาพกิจกรรม
+                  <Upload size={18} color="#8b0000" /> คลิกเลือกไฟล์
                   <input
                     type="file"
                     accept="image/*"
@@ -2103,7 +2102,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
               </div>
 
               <div className="form-field">
-                <label>กำหนดชั้นปีที่มีสิทธิ์สมัครเป็นสต๊าฟได้ (ใช้ร่วมกันทุกฝ่ายในกิจกรรมนี้) *</label>
+                <label>กำหนดชั้นปีที่มีสิทธิ์สมัครเป็นสตาฟ *</label>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '6px' }}>
                   {['1', '2', '3', '4'].map(yr => {
                     const checked = eventForm.allowedYears.includes(yr);
@@ -2127,7 +2126,7 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
               </div>
 
               <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '10px', border: '1px solid #e5e7eb' }}>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>รูปแบบ QR Code กลุ่ม LINE หลังสมัครเสร็จ *</label>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>QR Code กลุ่ม LINE *</label>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
                   <button
                     type="button"
@@ -2243,12 +2242,12 @@ export default function StaffRecruitmentTab({ currentUser, lang = 'th' }: StaffR
                       </div>
 
                       <div style={{ marginBottom: eventForm.qrCount === 2 ? '10px' : '0' }}>
-                        <label style={{ fontSize: '13px', fontWeight: 'bold' }}>รายละเอียดว่าฝ่ายนี้ต้องทำอะไรบ้าง *</label>
+                        <label style={{ fontSize: '13px', fontWeight: 'bold' }}>รายละเอียดฝ่าย *</label>
                         <input
                           required
                           type="text"
                           className="form-input"
-                          placeholder="อธิบายหน้าที่ของฝ่ายนี้ให้ผู้สมัครเข้าใจ..."
+                          placeholder="หน้าที่และความรับผิดชอบของฝ่ายนี้"
                           value={r.description}
                           onChange={e => {
                             const updated = [...eventForm.roles];
