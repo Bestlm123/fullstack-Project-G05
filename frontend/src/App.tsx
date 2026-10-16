@@ -454,7 +454,7 @@ function App() {
   const handleDevLogin = async (role: 'supreme' | 'admin' | 'user') => {
     try {
       const dbRole = role === 'supreme' ? 'admin' : role;
-      const studentId = role === 'supreme' ? '670610706' : role === 'admin' ? '650610000' : '650610999';
+      const studentId = role === 'admin' ? '650610000' : '650610999';
       const fullName = role === 'supreme' ? 'Supreme' : role === 'admin' ? 'Admin Tester' : 'Student Tester';
 
       const response = await axios.post(`${BASE_URL}/api/auth/login`, {
