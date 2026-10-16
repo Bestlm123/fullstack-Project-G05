@@ -11,20 +11,21 @@ const API_URL = `${BASE_URL}/api`;
 
 axios.defaults.withCredentials = true;
 
-const DEFAULT_BANNER_IMG = 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1600';
+const DEFAULT_BANNER_IMG = "https://i.postimg.cc/fbH3QLpL/WE-ARE-ALL-ENTANEER-CMU.png";
 const DEFAULT_NEWS_IMG = 'https://images.unsplash.com/photo-1523580494112-071d47141506?auto=format&fit=crop&q=80&w=800';
+const countdown_IMG = 'https://i.postimg.cc/NjDVYq4H/mi-m-r-p-pha-phk-ckr-rm.png';
 
 const HOME_IMAGE_SIZES = {
   heroBanner: {
     width: '100%',
-    aspectRatio: '1920 / 1080',
+    aspectRatio: '1920 / 700',
     maxHeight: '540px',
     objectFit: 'contain' as const,
     backgroundColor: '#111827'
   },
   newsCardThumbnail: {
     width: '100%',
-    aspectRatio: '16 / 9',
+    aspectRatio: '1200 / 1200',
     height: '200px',
     objectFit: 'contain' as const,
     backgroundColor: '#f8fafc'
@@ -37,10 +38,10 @@ const HOME_IMAGE_SIZES = {
   },
   countdownCover: {
     width: '100%',
-    aspectRatio: '16 / 9',
+    aspectRatio: '1200 / 1200',
     height: '180px',
     objectFit: 'contain' as const,
-    backgroundColor: '#1f2937'
+    backgroundColor: '#000000'
   }
 };
 
@@ -590,7 +591,7 @@ export default function HomePage({ currentRole, lang = 'th' }: HomePageProps) {
             <>
               <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid #e5e7eb', marginBottom: '14px', backgroundColor: HOME_IMAGE_SIZES.countdownCover.backgroundColor }}>
                 <img
-                  src={countdownImage || DEFAULT_BANNER_IMG}
+                  src={countdownImage || countdown_IMG}
                   alt="Countdown Event"
                   style={{
                     width: HOME_IMAGE_SIZES.countdownCover.width,
@@ -600,7 +601,7 @@ export default function HomePage({ currentRole, lang = 'th' }: HomePageProps) {
                     display: 'block'
                   }}
                   onError={(e) => {
-                    e.currentTarget.src = DEFAULT_BANNER_IMG;
+                    e.currentTarget.src = countdown_IMG;
                   }}
                 />
               </div>
